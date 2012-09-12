@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>org.ebay.maven</groupId>
-	<artifactId>cli-downloader</artifactId>
+	<artifactId>cli-wrapper</artifactId>
 	<version>0.0.1</version>
 
 	<dependencies>
