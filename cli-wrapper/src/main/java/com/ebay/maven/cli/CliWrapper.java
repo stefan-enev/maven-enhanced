@@ -25,10 +25,23 @@ import org.apache.maven.model.Repository;
 import com.ebay.maven.utils.PomUtils;
 
 /**
- * <code>CliWrapper</code> reads pom file(s) and collects the repositories and dependencies the project needs.
+ * <code>CliWrapper</code> prepares the workspace before maven kicks in.
+ * <ol>
+ * 	<li>Downloads all dependencencies and pre-fill the local repository before maven starts.</li>
+ * 	<li>If the project has a <I>Compiled Source Repository</I>, it gets the class files into target/classes folder.
+ * </ol>
+ *
+ * <H3>Downloading All Dependencies</H3>
+ * reads pom file(s) and collects the repositories and dependencies the project needs.
  * The wrapper should be able to process all the CLI parameters that maven takes and pass it on to maven.
  * 
- * @author nsankaran
+ * <H3>Using compiled repository</H3>
+ * large projects may have 1000s of java classes, it may take a long time to build in a laptop.
+ * So, lightening will download the pre-compiled classes for the project and fill 'target' folder.
+ * This will enable the developer to get start coding in seconds. 
+ * 
+ * 
+ * @author nambi sankaran
  *
  */
 public class CliWrapper {
@@ -37,6 +50,15 @@ public class CliWrapper {
 		
 		// store the CLI parameters
 		
+		CliWrapper wrapper = new CliWrapper();
+		
+		//wrapper.downloadDependencies();
+		
+		wrapper.createBinaryRepository();
+		
+	}
+	
+	public void downloadDependencies(){
 		// read the pom.xml
 		// TODO: get the pom.xml path from -f argument
 		Model model = PomUtils.readModel("pom.xml");
@@ -56,6 +78,9 @@ public class CliWrapper {
 		// download the dependencies
 		
 		// invoke maven with dependencies
+	}
+	
+	public void createBinaryRepository(){
 		
 	}
 
