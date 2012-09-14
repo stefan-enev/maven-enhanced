@@ -18,6 +18,7 @@ package com.ebay.maven.cli;
 
 import java.util.List;
 
+import org.apache.commons.cli.ParseException;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Repository;
@@ -48,14 +49,36 @@ public class CliWrapper {
 
 	public static void main( String[] args ){
 		
-		// store the CLI parameters
-		
 		CliWrapper wrapper = new CliWrapper();
+		InputParams input = wrapper.processCliArguments(args);
 		
-		//wrapper.downloadDependencies();
+		wrapper.process(input);
+	}
+	
+	public InputParams processCliArguments( String[] args ){
 		
-		wrapper.createBinaryRepository();
+		InputParams input = null;
 		
+		CliArgsParser parser = new CliArgsParser();
+		try {
+			input = parser.parse(args);
+		} catch (ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return input;
+	}
+	
+	public void process( InputParams input ){
+		
+		if( input.getMode().equals(RunMode.BINARY_REPO) ){
+			for( String action : input.getActions() ){
+				if( action.equals(Actions.BINARYREPO_CREATE ) ){
+					createBinaryRepository();
+				}
+			}
+		}
 	}
 	
 	public void downloadDependencies(){
@@ -82,6 +105,7 @@ public class CliWrapper {
 	
 	public void createBinaryRepository(){
 		
+		// assume the current directory the "root" of the project
 	}
 
 }
