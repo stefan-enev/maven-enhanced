@@ -61,7 +61,12 @@ public class CliWrapper {
 		
 		CliArgsParser parser = new CliArgsParser();
 		try {
+			
 			input = parser.parse(args);
+			
+			if( input.getMode().equals(RunMode.USAGE ) ){
+				parser.printUsage();
+			}
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -72,12 +77,8 @@ public class CliWrapper {
 	
 	public void process( InputParams input ){
 		
-		if( input.getMode().equals(RunMode.BINARY_REPO) ){
-			for( String action : input.getActions() ){
-				if( action.equals(Actions.BINARYREPO_CREATE ) ){
-					createBinaryRepository();
-				}
-			}
+		if( input.getMode().equals(RunMode.CREATE_UPDATE) ){
+					createOrUpdateBinaryRepository();
 		}
 	}
 	
@@ -103,7 +104,7 @@ public class CliWrapper {
 		// invoke maven with dependencies
 	}
 	
-	public void createBinaryRepository(){
+	public void createOrUpdateBinaryRepository(){
 		
 		// assume the current directory the "root" of the project
 	}

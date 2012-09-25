@@ -43,8 +43,44 @@
 		    <groupId>junit</groupId>
 		    <artifactId>junit</artifactId>
 		    <version>4.10</version>
+		    <scope>test</scope>
 		</dependency>
 		
 	</dependencies>
+	
+	<build>
+
+	    <!-- To use the plugin goals in your POM or parent POM -->
+	    <plugins>
+	      <plugin>
+	        <groupId>org.apache.maven.plugins</groupId>
+	        <artifactId>maven-shade-plugin</artifactId>
+	        <version>2.0</version>
+	        <executions>
+	        	<execution>
+	        		<phase>package</phase>
+	        		<goals>
+	        			<goal>shade</goal>
+	        		</goals>
+	        		<configuration>
+	        			<transformers>
+                			<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                 				<mainClass>com.ebay.maven.cli.CliWrapper</mainClass>
+                			</transformer>
+              			</transformers>
+              			<!-- 
+	        			<filters>
+	        				<artifact>junit:junit</artifact>
+	        				<excludes>
+	        					<exclude>org/junit/**</exclude>
+	        				</excludes>
+	        			</filters>
+	        			 -->
+	        		</configuration>
+	        	</execution>
+	        </executions>
+	      </plugin>
+	    </plugins>
+    </build> 
 
 </project>
