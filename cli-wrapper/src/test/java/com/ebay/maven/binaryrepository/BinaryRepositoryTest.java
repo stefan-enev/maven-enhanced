@@ -2,6 +2,8 @@ package com.ebay.maven.binaryrepository;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.Test;
 
@@ -54,7 +56,9 @@ public class BinaryRepositoryTest {
 		try {
 			repo = new BinaryRepository( new File( System.getProperty("user.dir")) );
 			File destination = new File( new File( System.getProperty("user.dir")) , "destination");
-			repo.copyBinaryFolders("target" , destination );
+			List<String> excludes = new ArrayList<String>();
+			excludes.add("localobr");
+			repo.copyBinaryFolders("target" , excludes, destination );
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();

@@ -16,6 +16,8 @@
  */
 package com.ebay.maven.cli;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 import org.apache.commons.cli.ParseException;
@@ -23,6 +25,8 @@ import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Repository;
 
+import com.ebay.maven.binaryrepository.BinaryRepository;
+import com.ebay.maven.binaryrepository.GitException;
 import com.ebay.maven.utils.PomUtils;
 
 /**
@@ -47,7 +51,7 @@ import com.ebay.maven.utils.PomUtils;
  */
 public class CliWrapper {
 
-	public static void main( String[] args ){
+	public static void main( String[] args ) throws ParseException{
 		
 		CliWrapper wrapper = new CliWrapper();
 		InputParams input = wrapper.processCliArguments(args);
@@ -55,21 +59,15 @@ public class CliWrapper {
 		wrapper.process(input);
 	}
 	
-	public InputParams processCliArguments( String[] args ){
+	public InputParams processCliArguments( String[] args ) throws ParseException{
 		
 		InputParams input = null;
 		
 		CliArgsParser parser = new CliArgsParser();
-		try {
+		input = parser.parse(args);
 			
-			input = parser.parse(args);
-			
-			if( input.getMode().equals(RunMode.USAGE ) ){
-				parser.printUsage();
-			}
-		} catch (ParseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		if( input.getMode().equals(RunMode.USAGE ) ){
+			parser.printUsage();
 		}
 		
 		return input;
@@ -78,10 +76,43 @@ public class CliWrapper {
 	public void process( InputParams input ){
 		
 		if( input.getMode().equals(RunMode.CREATE_UPDATE) ){
-					createOrUpdateBinaryRepository();
+			createOrUpdateBinaryRepository();
+		}
+		if( input.getMode().equals(RunMode.SETUP) ){
+			setupProject();
 		}
 	}
 	
+
+	
+	public void createOrUpdateBinaryRepository(){
+		
+		// assume the current directory the "root" of the project
+		File root = new File( System.getProperty("user.dir"));
+		try {
+			BinaryRepository repository = new BinaryRepository(root);
+			
+			if( repository.isBinaryRepositoryAvailable() ){
+				// todo: update 
+			}else{
+				repository.createBinaryRepository();
+			}
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (GitException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	public void setupProject(){
+		// TODO: download dependencies
+		
+		// Get the binary classes and populate project "target" folders
+	}
+
 	public void downloadDependencies(){
 		// read the pom.xml
 		// TODO: get the pom.xml path from -f argument
@@ -103,10 +134,4 @@ public class CliWrapper {
 		
 		// invoke maven with dependencies
 	}
-	
-	public void createOrUpdateBinaryRepository(){
-		
-		// assume the current directory the "root" of the project
-	}
-
 }

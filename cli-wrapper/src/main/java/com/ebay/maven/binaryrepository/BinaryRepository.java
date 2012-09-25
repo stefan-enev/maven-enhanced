@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.eclipse.jgit.api.AddCommand;
+import org.eclipse.jgit.api.CheckoutCommand;
 import org.eclipse.jgit.api.CommitCommand;
 import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
@@ -63,6 +64,11 @@ public class BinaryRepository {
 		return repository;
 	}
 	
+	public String getSourceRemoteUrl(){
+		String remoteUrl = sourceRepository.getConfig().getString("remote", "origin", "url");
+		return remoteUrl;
+	}
+	
 	public boolean isBinaryRepositoryAvailable(){
 		
 		boolean result = false;
@@ -73,9 +79,12 @@ public class BinaryRepository {
 		// find where ".git" folder is found
 		File f = sourceRepository.getDirectory();
 		
+		// repository foldername
+		String repositoryFolderName = f.getParentFile().getName();
+		
 		// go to parent directory
 		File parent = f.getParentFile().getParentFile();
-		File binaryRepoFolder = new File( parent , ( "." + repositoryName) );
+		File binaryRepoFolder = new File( parent , ( "." + repositoryFolderName) );
 		
 		// check whether ".SourceRepo.git" folder exists
 		if( binaryRepoFolder.exists() && 
@@ -107,10 +116,13 @@ public class BinaryRepository {
 		
 		// find where ".git" folder is found
 		File f = sourceRepository.getDirectory();
+		File sourceRepoFolder = f.getParentFile();
+		
+		String sourceRepoFolderName = f.getParentFile().getName();
 		
 		// go to parent directory
 		File parent = f.getParentFile().getParentFile();
-		File binaryRepoFolder = new File( parent , ( "." + sourceRepoName) );
+		File binaryRepoFolder = new File( parent , ( "." + sourceRepoFolderName) );
 		
 		// create binary repository folder
 		FileUtils.mkdir(binaryRepoFolder, true);
@@ -125,6 +137,42 @@ public class BinaryRepository {
 			throw new GitException("unable to initialize repository", e);
 		}
 		
+		// add a "README.md" file and commit
+		File readmeFile = new File(binaryRepoFolder, "README.md");
+		List<String> readmeContent = new ArrayList<String>();
+		readmeContent.add("Binary Repository For " + getSourceRemoteUrl() );
+		readmeContent.add("=======================================================");
+		readmeContent.add("");
+		readmeContent.add("Stores the class files for the above source repository");
+		org.apache.commons.io.FileUtils.writeLines(readmeFile, readmeContent, "\n");
+		
+		// get "status"
+		StatusCommand statusC = binaryRepo.status();
+		Collection<String> toadd = GitUtils.getFilesToStage(statusC);
+		
+		// add "readme" file to staging
+		if( toadd.size() > 0 ){
+			AddCommand add = binaryRepo.add();
+			for( String file : toadd ){
+				add.addFilepattern(file);
+			}
+			
+			try {
+				
+				add.call();
+				
+				CommitCommand commit = binaryRepo.commit();
+				commit.setMessage("iniatial commit");
+				
+				commit.call();
+				
+			} catch (NoFilepatternException e) {
+				throw new GitException("unable to add file(s)", e);
+			} catch (GitAPIException e) {
+				throw new GitException("Unable to add or commit", e);
+			}
+		}
+		
 		// read the branch from "source" repository
 		String branchname = sourceRepository.getBranch();
 		
@@ -133,7 +181,14 @@ public class BinaryRepository {
 			CreateBranchCommand branchCmd = binaryRepo.branchCreate();
 			branchCmd.setName(branchname);
 			try {
+				// create branch
 				branchCmd.call();
+				
+				// checkout the branch
+				CheckoutCommand checkout = binaryRepo.checkout();
+				checkout.setName(branchname);
+				checkout.call();
+				
 			} catch (RefAlreadyExistsException e) {
 				throw new GitException("unable to create a branch", e);
 			} catch (RefNotFoundException e) {
@@ -147,37 +202,20 @@ public class BinaryRepository {
 		
 		// TODO: add "remote" repository
 		
-		// copy the classes
-		copyBinaryFolders("target", binaryRepoFolder);
-		
-		// get "status"
-		List<String> tobeAdded = new ArrayList<String>();
-		List<String> issues = new ArrayList<String>();
-		StatusCommand statusCmd = binaryRepo.status();
-		try {
-			Status status = statusCmd.call();
-			
-			tobeAdded.addAll(status.getModified());
-			tobeAdded.addAll(status.getChanged());
-			tobeAdded.addAll(status.getRemoved());
-			tobeAdded.addAll(status.getUntracked());
-			
-			for( String file : tobeAdded){
-				System.out.println(file);
-			}
-			
-			issues.addAll(status.getConflicting());
-			issues.addAll(status.getMissing());
-			
-			for( String file: issues ){
-				System.out.println("BAD: " + file);
-			}
-		} catch (NoWorkTreeException e) {
-			throw new GitException("unable to get status", e);
-		} catch (GitAPIException e) {
-			throw new GitException("unable to get status", e);
+
+		// find the "localobr" folders and exclude them during copy
+		List<String> excludes = new ArrayList<String>();
+		Collection<File> excludeFiles = FileUtil.findDirectoriesThatEndWith(sourceRepoFolder, "localobr");
+		for( File file: excludeFiles ){
+			excludes.add( file.getCanonicalPath() );
 		}
 		
+		// copy the classes
+		copyBinaryFolders("target", excludes, binaryRepoFolder);
+		
+		// get "status"
+		StatusCommand statusCmd = binaryRepo.status();
+		Collection<String> tobeAdded = GitUtils.getFilesToStage(statusCmd);
 		
 		// add files to "staging"
 		if( tobeAdded.size() > 0 ){
@@ -214,10 +252,10 @@ public class BinaryRepository {
 			throw new GitException("unable to commit", e);
 		}
 		
-		// push
+		// TODO: push
 	}
 	
-	public void copyBinaryFolders( String pattern, File destination ) throws IOException{
+	public void copyBinaryFolders( String pattern, List<String> exclusionList, File destination ) throws IOException{
 		
 		File root = sourceRepository.getDirectory().getParentFile();
 		
@@ -225,13 +263,11 @@ public class BinaryRepository {
 		Collection<File> files = FileUtil.findDirectoriesThatEndWith(root, pattern);
 		
 		FilenameFilter filter = new FilenameFilter() {
-			
 			public boolean accept(File dir, String name) {
 				return true;
 			}
 		};
 		
-		List<String> exclusionList = new ArrayList<String>();
 		int pathlength = root.getCanonicalPath().length();
 		
 		for( File f : files ){

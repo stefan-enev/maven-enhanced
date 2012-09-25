@@ -1,5 +1,13 @@
 package com.ebay.git.utils;
 
+import java.util.ArrayList;
+import java.util.Collection;
+
+import org.eclipse.jgit.api.Status;
+import org.eclipse.jgit.api.StatusCommand;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.errors.NoWorkTreeException;
+
 public class GitUtils {
 	
 	public static String getRepositoryName( String repository ){
@@ -72,4 +80,41 @@ public class GitUtils {
 		return repository;
 	}
 
+	public static Collection<String> getFilesToStage( StatusCommand statusCmd ){
+		
+		Collection<String> tobeAdded = new ArrayList<String>();
+		
+		try {
+			Status status = statusCmd.call();
+			
+			
+			Collection<String> issues = new ArrayList<String>();
+			
+			tobeAdded.addAll(status.getModified());
+			tobeAdded.addAll(status.getChanged());
+			tobeAdded.addAll(status.getRemoved());
+			tobeAdded.addAll(status.getUntracked());
+			
+			for( String file : tobeAdded){
+				System.out.println(file);
+			}
+			
+			issues.addAll(status.getConflicting());
+			issues.addAll(status.getMissing());
+			
+			for( String file: issues ){
+				// TODO: what to do? throw error
+				System.out.println("BAD: " + file);
+			}
+			
+		} catch (NoWorkTreeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (GitAPIException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return tobeAdded;
+	}
 }
