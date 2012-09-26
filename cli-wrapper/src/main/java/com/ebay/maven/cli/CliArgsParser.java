@@ -42,7 +42,7 @@ public class CliArgsParser {
 		if( cli.hasOption('s' )){
 			params.setMode(RunMode.SETUP);
 		}
-		if( cli.hasOption('s')){
+		if( cli.hasOption('h')){
 			params.setMode(RunMode.USAGE);
 		}
 		

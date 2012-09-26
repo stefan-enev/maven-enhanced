@@ -119,8 +119,12 @@ public class CliWrapper {
 			if( repository.isBinaryRepositoryAvailable() ){
 				
 			}else if( repository.isRemoteBinaryRepositoryAvailable() ) {
-				
+				repository.cloneBinaryRepository();
+			}else{
+				// TODO: anything we can do?
+				System.out.println("Binary repository not available. exiting...");
 			}
+			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

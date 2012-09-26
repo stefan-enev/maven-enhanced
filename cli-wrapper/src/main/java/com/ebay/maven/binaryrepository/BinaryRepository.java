@@ -9,23 +9,26 @@ import java.util.List;
 
 import org.eclipse.jgit.api.AddCommand;
 import org.eclipse.jgit.api.CheckoutCommand;
+import org.eclipse.jgit.api.CheckoutResult;
+import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.CommitCommand;
 import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.InitCommand;
-import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.StatusCommand;
 import org.eclipse.jgit.api.errors.ConcurrentRefUpdateException;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.InvalidRefNameException;
+import org.eclipse.jgit.api.errors.InvalidRemoteException;
 import org.eclipse.jgit.api.errors.NoFilepatternException;
 import org.eclipse.jgit.api.errors.NoHeadException;
 import org.eclipse.jgit.api.errors.NoMessageException;
 import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
 import org.eclipse.jgit.api.errors.RefNotFoundException;
+import org.eclipse.jgit.api.errors.TransportException;
 import org.eclipse.jgit.api.errors.UnmergedPathsException;
 import org.eclipse.jgit.api.errors.WrongRepositoryStateException;
-import org.eclipse.jgit.errors.NoWorkTreeException;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.storage.file.FileRepository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.util.FileUtils;
@@ -109,6 +112,9 @@ public class BinaryRepository {
 		
 		String repositoryName = getRepositoryName();
 		
+		// TODO: use github apis to check whether the repository is available
+		result = true;
+		
 		return result;
 	}
 	
@@ -129,7 +135,7 @@ public class BinaryRepository {
 		
 		String sourceRepoFolderName = f.getParentFile().getName();
 		
-		// go to parent directory
+		// calculate binary repository folder
 		File parent = f.getParentFile().getParentFile();
 		File binaryRepoFolder = new File( parent , ( "." + sourceRepoFolderName) );
 		
@@ -264,7 +270,10 @@ public class BinaryRepository {
 		// TODO: push
 	}
 	
-	public void copyBinaryFolders( String pattern, List<String> exclusionList, File destination ) throws IOException{
+	public void copyBinaryFolders(  String pattern, 
+									List<String> exclusionList, 
+									File destination ) 
+											throws IOException{
 		
 		File root = sourceRepository.getDirectory().getParentFile();
 		
@@ -293,6 +302,77 @@ public class BinaryRepository {
 				FileUtil.doCopyDirectory(f, d, filter, true, exclusionList);
 			}
 		}
+	}
+	
+	public void cloneBinaryRepository() {
+
+		// find the name of the "source repository"
+		String sourceRepoName = getRepositoryName();
+
+		// find where ".git" folder is found
+		File f = sourceRepository.getDirectory();
+		File sourceDir = f.getParentFile();
+
+		String sourceRepoFolderName = f.getParentFile().getName();
+		
+		// construct the binary repository URL
+		String giturl = "git@github.scm.corp.ebay.com:Binary/" + sourceRepoName + "_binary.git";
+		
+		// calculate binary repository folder
+		File parent = f.getParentFile().getParentFile();
+		File binaryRepoFolder = new File( parent , ( "." + sourceRepoFolderName) );
+		
+		// read the branch from "source" repository
+		String branchname = "master";
+		try {
+			branchname = sourceRepository.getBranch();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		// clone the binary repository
+		CloneCommand cloneCmd = Git.cloneRepository();
+		cloneCmd.setURI( giturl );
+		cloneCmd.setDirectory( binaryRepoFolder );
+		cloneCmd.setCloneAllBranches(true);
+//		List<String> branchesToClone = new ArrayList<String>();
+//		branchesToClone.add(branchname);
+//		cloneCmd.setBranchesToClone(branchesToClone);
+//		cloneCmd.setBranch(branchname);
+
+		
+		try {
+			
+			Git binaryRepository = cloneCmd.call();
+			
+			CheckoutCommand checkoutCmd = binaryRepository.checkout();
+			
+			checkoutCmd.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.SET_UPSTREAM );
+			checkoutCmd.setName("origin/" + branchname);
+			// TODO: checkout is not happening properly for a branch. fix it.
+			Ref branch = checkoutCmd.call();
+			
+			CheckoutResult result = checkoutCmd.getResult();
+			System.out.println( result.getStatus());			
+			
+			// copy the classes to source repository
+			org.apache.commons.io.FileUtils.copyDirectory(binaryRepoFolder, sourceDir);
+			
+		} catch (InvalidRemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (TransportException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (GitAPIException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 	}
 
 }
