@@ -103,6 +103,15 @@ public class BinaryRepository {
 		return result;
 	}
 	
+	public boolean isRemoteBinaryRepositoryAvailable(){
+		
+		boolean result = false;
+		
+		String repositoryName = getRepositoryName();
+		
+		return result;
+	}
+	
 	public void createBinaryRepository() throws IOException, GitException{
 		
 		// check whether "binary repository" exists

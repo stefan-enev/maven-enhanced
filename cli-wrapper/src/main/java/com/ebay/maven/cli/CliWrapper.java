@@ -110,6 +110,22 @@ public class CliWrapper {
 	public void setupProject(){
 		// TODO: download dependencies
 		
+		// read the source project
+		File root = new File( System.getProperty("user.dir"));
+		
+		try {
+			BinaryRepository repository = new BinaryRepository(root);
+			
+			if( repository.isBinaryRepositoryAvailable() ){
+				
+			}else if( repository.isRemoteBinaryRepositoryAvailable() ) {
+				
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		// Get the binary classes and populate project "target" folders
 	}
 
