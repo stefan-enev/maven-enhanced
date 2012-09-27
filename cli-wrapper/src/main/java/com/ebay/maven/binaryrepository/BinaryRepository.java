@@ -336,11 +336,6 @@ public class BinaryRepository {
 		cloneCmd.setURI( giturl );
 		cloneCmd.setDirectory( binaryRepoFolder );
 		cloneCmd.setCloneAllBranches(true);
-//		List<String> branchesToClone = new ArrayList<String>();
-//		branchesToClone.add(branchname);
-//		cloneCmd.setBranchesToClone(branchesToClone);
-//		cloneCmd.setBranch(branchname);
-
 		
 		try {
 			
@@ -356,8 +351,8 @@ public class BinaryRepository {
 			CheckoutResult result = checkoutCmd.getResult();
 			System.out.println( result.getStatus());			
 			
-			// copy the classes to source repository
-			org.apache.commons.io.FileUtils.copyDirectory(binaryRepoFolder, sourceDir);
+			// copy the .class files from binaryrepository to source-repository
+			FileUtil.copyBinaryFolders( binaryRepoFolder, sourceDir, ".git");
 			
 		} catch (InvalidRemoteException e) {
 			// TODO Auto-generated catch block

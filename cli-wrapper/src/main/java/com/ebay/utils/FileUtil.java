@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -16,7 +17,7 @@ public class FileUtil {
 		
 		List<File> directories = new ArrayList<File>();
 		
-		IOFileFilter filefilter = new FileFilter();
+		IOFileFilter filefilter = new FileFilter(); // returns false for all files
 		IOFileFilter dirFilter  = new DirFilter(pattern);
 		
 		Collection<File> files = FileUtils.listFilesAndDirs( rootDir, filefilter, dirFilter);
@@ -32,7 +33,7 @@ public class FileUtil {
 	}
 	
     /**
-     * Internal copy directory method.
+     * 
      * 
      * @param srcDir  the validated source directory, must not be {@code null}
      * @param destDir  the validated destination directory, must not be {@code null}
@@ -83,6 +84,67 @@ public class FileUtil {
             destDir.setLastModified(srcDir.lastModified());
         }
     }
+    
+    /**
+     * 
+     * @param source
+     * @param destination
+     * @param excludePattern
+     * @throws IOException
+     */
+	public static void copyBinaryFolders(File source, 
+									File destination, 
+									String excludePattern ) 
+											throws IOException {
+
+		// TODO: excludePattern should be an array, so that we can pass a list of patterns
+
+		File[] files = source.listFiles();
+		List<File> filteredfiles = new ArrayList<File>();
+		
+		Collection<File> excludeFiles = FileUtil.findDirectoriesThatEndWith(source, excludePattern);
+		
+		for( File f: excludeFiles ){
+			for( File o : files ){
+				if( !o.getCanonicalPath().equals(f.getCanonicalPath()) ){
+					filteredfiles.add(o);
+				}
+			}
+		}
+		
+		List<String> exclusionList = new ArrayList<String>();
+		exclusionList.add( excludePattern );
+
+		FilenameFilter filter = new FilenameFilter() {
+			public boolean accept(File dir, String name) {
+				return true;
+			}
+		};
+
+		int pathlength = source.getCanonicalPath().length();
+		for (File f : filteredfiles) {
+
+			// construct the directory to copied
+			if (f.getCanonicalPath().startsWith(source.getCanonicalPath())) {
+
+				// get the path that is additional
+				String pathfraction = f.getCanonicalPath().substring(pathlength);
+
+				File d = new File(destination, pathfraction);
+
+				
+				if( f.isDirectory()){
+					System.out.println("copying directory " + f.getCanonicalPath() + " to " + d.getAbsolutePath());
+					FileUtil.doCopyDirectory(f, d, filter, true, exclusionList);
+				}else{
+					
+					//File destFile = new File(d,f.getName());
+					System.out.println("copying file " + f.getCanonicalPath() + " to " + d.getAbsolutePath());
+					FileUtils.copyFile(f, d, true);
+				}
+			}
+		}
+	}
 	
 	public static class FileFilter implements IOFileFilter{
 
