@@ -16,18 +16,17 @@
  */
 package com.ebay.maven.cli;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
-
+import com.ebay.maven.binaryrepository.BinaryRepository;
+import com.ebay.maven.binaryrepository.GitException;
+import com.ebay.maven.utils.PomUtils;
 import org.apache.commons.cli.ParseException;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Repository;
 
-import com.ebay.maven.binaryrepository.BinaryRepository;
-import com.ebay.maven.binaryrepository.GitException;
-import com.ebay.maven.utils.PomUtils;
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
 
 /**
  * <code>CliWrapper</code> prepares the workspace before maven kicks in.
@@ -90,13 +89,29 @@ public class CliWrapper {
 		// assume the current directory the "root" of the project
 		File root = new File( System.getProperty("user.dir"));
 		try {
+            System.out.println(root.getName());
+            // TODO: RGIROTI Undo change to root later
+            root = new File("D:\\dev\\devex\\binrepo-devex");
 			BinaryRepository repository = new BinaryRepository(root);
 			
 			if( repository.isBinaryRepositoryAvailable() ){
-				// todo: update 
-			}else{
-				repository.createBinaryRepository();
+                 // D:\dev\.maven-enhanced is the Binary Repository
+				// todo: update
+                repository.updateBinaryRepository();
+
+
+
+
+
+			} else {
+                // 2 cases:
+                // 1. The repo is not available locally or remotely
+                repository.createBinaryRepository();
+                // 2. TODO: The repo is not locally available but is present remotely - clone it and then update it
 			}
+
+
+            //
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block

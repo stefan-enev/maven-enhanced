@@ -1,12 +1,12 @@
 package com.ebay.git.utils;
 
-import java.util.ArrayList;
-import java.util.Collection;
-
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.StatusCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.errors.NoWorkTreeException;
+
+import java.util.ArrayList;
+import java.util.Collection;
 
 public class GitUtils {
 	
@@ -15,7 +15,7 @@ public class GitUtils {
 		String repositoryName=null;
 		
 		if( repository == null || repository.trim().equals("")){
-			// TODO: throw npe
+			throw new NullPointerException("Repository name cannot be null or empty");
 		}
 		
 		// git ssh format

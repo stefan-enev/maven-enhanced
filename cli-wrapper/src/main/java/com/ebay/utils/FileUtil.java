@@ -1,15 +1,16 @@
 package com.ebay.utils;
 
+import com.ebay.github.client.GitHubClient;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.IOFileFilter;
+import org.kohsuke.github.GHRepository;
+
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.filefilter.IOFileFilter;
 
 public class FileUtil {
 
@@ -194,9 +195,24 @@ public class FileUtil {
 		
 	}
 	
-	public enum PositionEnum{
+	public enum PositionEnum {
 		STARTS_WITH,
 		ENDS_WITH,
 		CONTAINS;
 	}
+
+    public static boolean existsInGit(final String repo) throws IOException {
+        final GHRepository repository = new GitHubClient().connect().getMyself().getRepository(repo);
+        return repository != null;
+    }
+
+    public static void main(String[] args) throws Exception {
+        System.out.println(existsInGit("binrepo-devex"));
+    }
+
+
+
+
+
+
 }
