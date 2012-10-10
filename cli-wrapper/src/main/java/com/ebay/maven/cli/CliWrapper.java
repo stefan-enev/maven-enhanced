@@ -91,7 +91,7 @@ public class CliWrapper {
 		try {
             System.out.println(root.getName());
             // TODO: RGIROTI Undo change to root later
-            root = new File("D:\\dev\\devex\\binrepo-devex");
+            // root = new File("D:\\dev\\devex\\binrepo-devex");
 			BinaryRepository repository = new BinaryRepository(root);
 			
 			if( repository.isBinaryRepositoryAvailable() ){
