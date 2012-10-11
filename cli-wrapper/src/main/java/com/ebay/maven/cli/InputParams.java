@@ -6,7 +6,6 @@ public class InputParams {
 	private RunMode mode;
 	private String mapSvcUrl;
 	
-
 	public RunMode getMode() {
 		return mode;
 	}

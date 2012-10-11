@@ -46,6 +46,9 @@ public class CliArgsParser {
 		if( cli.hasOption('h')){
 			params.setMode(RunMode.USAGE);
 		}
+		if( cli.hasOption('u')){
+			params.setMapSvcUrl(cli.getOptionValue('u'));
+		}
 		
 		return params;
 	}

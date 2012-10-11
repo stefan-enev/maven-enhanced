@@ -35,12 +35,15 @@ public class BinaryRepository {
     private File root;
     private File destination;
 	private FileRepository sourceRepository;
-
     private FileRepository binaryRepository;
+    private String serviceUrl = null;
+    
     private static Client client = Client.create();
 
     public static final String SVC_BASE_URL = "http://localhost:10000/services/repo";
     public static final String BINREPOSVC_FINDBY_REPOURL_BRANCH_COMMITID = "http://localhost:10000/services/repo/search/byrepourlbranchandcommitid/?";
+    public static final String SVC_BASE = "/services/repo";
+    public static final String SVC_FINDBY_REPO_BRANCH_COMMITID = "/byrepourlbranchandcommitid/?";
     public static final String UTF_8 = "UTF-8";
 
 	public BinaryRepository(File root) throws IOException{
@@ -406,9 +409,11 @@ public class BinaryRepository {
         System.out.println("CommitHash:" + commitHash + "\tMessage:" + commit.getFullMessage());
 
         // 3. Call the BinRepo service and check if a corresponding BinRepo entry exists
-        final String url = BINREPOSVC_FINDBY_REPOURL_BRANCH_COMMITID +
-                "repourl=" + URLEncoder.encode(repoUrl, UTF_8) + "&branch=" + URLEncoder.encode(branch, UTF_8) +
-                "&commitid=" + URLEncoder.encode(commitHash, UTF_8);
+//        final String url = BINREPOSVC_FINDBY_REPOURL_BRANCH_COMMITID +
+//                "repourl=" + URLEncoder.encode(repoUrl, UTF_8) + "&branch=" + URLEncoder.encode(branch, UTF_8) +
+//                "&commitid=" + URLEncoder.encode(commitHash, UTF_8);
+        
+        final String url = getUrlForFindByRepoBranchCommit();
         WebResource webResource = client.resource(url);
         boolean noContent = false;
         BinRepoBranchCommitDO binRepoBranchCommitDO1 = null;
@@ -522,5 +527,28 @@ public class BinaryRepository {
             Files.copy(srcDir, dstDir);
         }
     }
+
+    public String getUrlForFindByRepoBranchCommit() throws UnsupportedEncodingException{
+    	StringBuilder sb = new StringBuilder();
+    	
+    	sb.append(getServiceUrl() );
+    	sb.append("/");
+    	sb.append( SVC_BASE );
+    	sb.append("/");
+    	sb.append(SVC_FINDBY_REPO_BRANCH_COMMITID );
+    	
+    	// TODO: remove "//" found anywhere in this string.
+    	
+    	String url = URLEncoder.encode(sb.toString(), UTF_8);
+    	
+    	return url;
+    }
+	public String getServiceUrl() {
+		return serviceUrl;
+	}
+
+	public void setServiceUrl(String serviceUrl) {
+		this.serviceUrl = serviceUrl;
+	}
 
 }
