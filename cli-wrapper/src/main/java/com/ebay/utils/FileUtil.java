@@ -1,9 +1,10 @@
 package com.ebay.utils;
 
 import com.ebay.github.client.GitHubClient;
+import com.google.common.base.Strings;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
-import org.kohsuke.github.GHRepository;
+import org.kohsuke.github.GHUser;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -13,6 +14,8 @@ import java.util.Collection;
 import java.util.List;
 
 public class FileUtil {
+
+    public static final String USER_NAME = "user.name";
 
 	public static Collection<File> findDirectoriesThatEndWith( File rootDir, String pattern ){
 		
@@ -202,12 +205,20 @@ public class FileUtil {
 	}
 
     public static boolean existsInGit(final String repo) throws IOException {
-        final GHRepository repository = new GitHubClient().connect().getMyself().getRepository(repo);
-        return repository != null;
+        if (Strings.isNullOrEmpty(repo)) return false;
+        String userName = System.getProperty(USER_NAME);
+        if (!Strings.isNullOrEmpty(userName)) {
+            final GHUser user = new GitHubClient().connect().getUser(userName);
+            if (user != null) {
+                return user.getRepository(repo) != null;
+            }
+        }
+        return false;
     }
 
     public static void main(String[] args) throws Exception {
         System.out.println(existsInGit("binrepo-devex"));
+        System.out.println(existsInGit("CreatedUsingGitHub-API-Client"));
     }
 
 
