@@ -4,6 +4,7 @@ package com.ebay.maven.cli;
 public class InputParams {
 
 	private RunMode mode;
+	private String mapSvcUrl;
 	
 
 	public RunMode getMode() {
@@ -14,6 +15,11 @@ public class InputParams {
 		this.mode = mode;
 	}
 
+	public String getMapSvcUrl() {
+		return mapSvcUrl;
+	}
 
-
+	public void setMapSvcUrl(String mapSvcUrl) {
+		this.mapSvcUrl = mapSvcUrl;
+	}
 }

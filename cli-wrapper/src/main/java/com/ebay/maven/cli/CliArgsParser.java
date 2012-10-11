@@ -19,6 +19,7 @@ public class CliArgsParser {
 		
 		options.addOption("c", "create-update", false, "create or update binary repository");
 		options.addOption("s", "setup", false, "setup workspace");
+		options.addOption("u", "map-service-url", false, "rest api url for the mapping service");
 		options.addOption("h", "help", false, "usage");
 		
 		return options;
