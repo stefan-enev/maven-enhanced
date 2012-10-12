@@ -106,9 +106,6 @@ public class CliWrapper {
                 repository.updateBinaryRepository();
 
 
-
-
-
 			} else {
                 // 2 cases:
                 // 1. The repo is not available locally or remotely

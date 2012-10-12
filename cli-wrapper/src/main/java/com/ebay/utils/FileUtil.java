@@ -204,6 +204,7 @@ public class FileUtil {
 		CONTAINS;
 	}
 
+	// TODO: move it github client
     public static boolean existsInGit(final String repo) throws IOException {
         if (Strings.isNullOrEmpty(repo)) return false;
         String userName = System.getProperty(USER_NAME);

@@ -58,6 +58,59 @@ public class GitUtils {
 		return repositoryName;
 	}
 	
+	public static String getOrgName( String repository ){
+		
+		String orgName=null;
+		
+		if( repository == null || repository.trim().equals("")){
+			throw new NullPointerException("Repository name cannot be null or empty");
+		}
+		
+		// git ssh format
+		// git@github.com:snambi/myrepo.git
+		if( repository.contains( "@" )){
+			String[]  s = repository.split(":");
+			
+			if( s != null && s.length == 2 ){
+				
+				// take the first second one
+				String gitrepo = s[1];
+				
+				if( gitrepo.contains(".git")){
+					if( gitrepo.contains("/")){
+						String o[] = gitrepo.split("/");
+						if( o.length == 2){
+							orgName = o[0];
+						}
+					}
+				}
+			}
+		}
+		
+		// git readonly format
+		// git://github.com/snambi/maven-enhanced.git
+		if( repository.startsWith("git://")){
+			
+			String[] s = repository.split("/");
+			
+			if( s!= null  && s.length >= 3 ){
+				orgName = s[ s.length -2 ];
+			}
+		}
+		
+		// http format
+		// https://github.com/snambi/myrepo.git
+		if( repository.startsWith("http")){
+			
+			String[] s = repository.split("\\/");
+			if( s!= null  && s.length >= 3 ){
+				orgName = s[ s.length -2 ];
+			}
+		}
+		
+		return orgName;
+	}
+	
 	/**
 	 * extracts repository name from string of the format "repo.git".
 	 * @param repository

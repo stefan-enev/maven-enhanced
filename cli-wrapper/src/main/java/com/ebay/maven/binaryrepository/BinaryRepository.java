@@ -1,25 +1,5 @@
 package com.ebay.maven.binaryrepository;
 
-import com.ebay.beans.BinRepoBranchCommitDO;
-import com.ebay.git.utils.GitUtils;
-import com.ebay.utils.FileUtil;
-import com.google.common.io.Files;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.UniformInterfaceException;
-import com.sun.jersey.api.client.WebResource;
-import org.eclipse.jgit.api.*;
-import org.eclipse.jgit.api.errors.*;
-import org.eclipse.jgit.lib.Constants;
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.storage.file.FileRepository;
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
-import org.eclipse.jgit.transport.PushResult;
-import org.eclipse.jgit.util.FileUtils;
-
-import javax.ws.rs.core.MediaType;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -29,6 +9,54 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+
+import javax.ws.rs.core.MediaType;
+
+import org.eclipse.jgit.api.AddCommand;
+import org.eclipse.jgit.api.CheckoutCommand;
+import org.eclipse.jgit.api.CheckoutResult;
+import org.eclipse.jgit.api.CloneCommand;
+import org.eclipse.jgit.api.CommitCommand;
+import org.eclipse.jgit.api.CreateBranchCommand;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.InitCommand;
+import org.eclipse.jgit.api.ListBranchCommand;
+import org.eclipse.jgit.api.PushCommand;
+import org.eclipse.jgit.api.StatusCommand;
+import org.eclipse.jgit.api.errors.ConcurrentRefUpdateException;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.InvalidRefNameException;
+import org.eclipse.jgit.api.errors.InvalidRemoteException;
+import org.eclipse.jgit.api.errors.NoFilepatternException;
+import org.eclipse.jgit.api.errors.NoHeadException;
+import org.eclipse.jgit.api.errors.NoMessageException;
+import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
+import org.eclipse.jgit.api.errors.RefNotFoundException;
+import org.eclipse.jgit.api.errors.TransportException;
+import org.eclipse.jgit.api.errors.UnmergedPathsException;
+import org.eclipse.jgit.api.errors.WrongRepositoryStateException;
+import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.StoredConfig;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.storage.file.FileRepository;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.transport.PushResult;
+import org.eclipse.jgit.util.FileUtils;
+import org.kohsuke.github.GHOrganization;
+import org.kohsuke.github.GHRepository;
+import org.kohsuke.github.GitHub;
+
+import com.ebay.beans.BinRepoBranchCommitDO;
+import com.ebay.git.utils.GitUtils;
+import com.ebay.github.client.GitHubClient;
+import com.ebay.utils.FileUtil;
+import com.google.common.io.Files;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.UniformInterfaceException;
+import com.sun.jersey.api.client.WebResource;
 
 public class BinaryRepository {
 
@@ -212,6 +240,8 @@ public class BinaryRepository {
 				checkout.setName(branchname);
 				checkout.call();
 
+
+				
 			} catch (RefAlreadyExistsException e) {
 				throw new GitException("unable to create a branch", e);
 			} catch (RefNotFoundException e) {
@@ -222,10 +252,27 @@ public class BinaryRepository {
 				throw new GitException("unable to create a branch", e);
 			}
 		}
-
-		// TODO: add "remote" repository
-
-
+		
+		// Calculate the remote url for binary repository
+		String remoteUrl = calculateBinaryRepositoryUrl();
+		
+		// TODO: check whether the remote exists, if not create it, else fail
+		GitHub github = new GitHubClient().getGithub();
+		GHOrganization githubOrg = github.getOrganization("Binary");
+		GHRepository repository = githubOrg.getRepository( GitUtils.getRepositoryName(remoteUrl) );
+		
+		if( repository == null ){
+			GHRepository repo = githubOrg.createRepository(GitUtils.getRepositoryName(remoteUrl), "", "", "nambi, ravi", true);
+		}else{
+			// fail, it shouldn't come here
+		}
+		
+		// add "remote" repository
+		StoredConfig config = binaryRepo.getRepository().getConfig();
+		config.setString("remote", "origin", "url", remoteUrl);
+		config.save();
+		
+		
 		// find the "localobr" folders and exclude them during copy
 		List<String> excludes = new ArrayList<String>();
 		Collection<File> excludeFiles = FileUtil.findDirectoriesThatEndWith(sourceRepoFolder, "localobr");
@@ -551,6 +598,19 @@ public class BinaryRepository {
     	sb.append( SVC_BASE );
     	
     	return sb.toString();
+    }
+    
+    public String calculateBinaryRepositoryUrl(){
+    	String remoteUrl=null;
+    	String srcUrl = getSourceRemoteUrl();
+    	if( srcUrl.contains("scm.corp.ebay.com")){
+    		String org = GitUtils.getOrgName(srcUrl);
+    		String repoName = GitUtils.getRepositoryName(srcUrl);
+    		remoteUrl = "git@github.scm.corp.ebay.com:Binary/" +  org + "_" + repoName + "_binary.git" ;
+    	}else{
+    		
+    	}
+    	return remoteUrl;
     }
     
 	public String getBaseServiceUrl() {

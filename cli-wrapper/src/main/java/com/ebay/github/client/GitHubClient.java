@@ -9,7 +9,7 @@ import java.util.Map;
 
 public class GitHubClient {
 
-	private static String githubUrl = "https://github.scm.corp.ebay.com/api/v3/";
+	private static String githubUrl = "https://github.scm.corp.ebay.com/api/v3";
 
 	// private static String accessToken = "5d8e186b08062ca405ab25d489fca9823c2a7136";
 
@@ -17,6 +17,14 @@ public class GitHubClient {
 
     private GitHub github;
 	
+	public GitHub getGithub() {
+		return github;
+	}
+
+	public void setGithub(GitHub github) {
+		this.github = github;
+	}
+
 	public GitHubClient() throws IOException {
 			github = GitHub.connectUsingOAuth(githubUrl, accessToken);
 	}
@@ -41,6 +49,7 @@ public class GitHubClient {
 	}
 
 
+	@Deprecated
     public GitHub connect() {
         /*String githubUrl = "https://github.scm.corp.ebay.com/api/v3/";
         String accessToken = "1cf7d9792235b8592eda18bd7dcc2de37f99b3bc";
