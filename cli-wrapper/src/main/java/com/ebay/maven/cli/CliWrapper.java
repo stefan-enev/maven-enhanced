@@ -19,13 +19,17 @@ package com.ebay.maven.cli;
 import com.ebay.maven.binaryrepository.BinaryRepository;
 import com.ebay.maven.binaryrepository.GitException;
 import com.ebay.maven.utils.PomUtils;
+import com.google.common.base.Strings;
+
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang.StringUtils;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Repository;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -52,6 +56,7 @@ public class CliWrapper {
 
 	public static void main( String[] args ) throws ParseException{
 		
+		System.out.println("args " + args.length + StringUtils.join(args) );
 		CliWrapper wrapper = new CliWrapper();
 		InputParams input = wrapper.processCliArguments(args);
 		
@@ -75,7 +80,7 @@ public class CliWrapper {
 	public void process( InputParams input ){
 		
 		if( input.getMode().equals(RunMode.CREATE_UPDATE) ){
-			createOrUpdateBinaryRepository();
+			createOrUpdateBinaryRepository( input);
 		}
 		if( input.getMode().equals(RunMode.SETUP) ){
 			setupProject();
@@ -84,7 +89,7 @@ public class CliWrapper {
 	
 
 	
-	public void createOrUpdateBinaryRepository(){
+	public void createOrUpdateBinaryRepository( InputParams input ){
 		
 		// assume the current directory the "root" of the project
 		File root = new File( System.getProperty("user.dir"));
@@ -93,6 +98,7 @@ public class CliWrapper {
             // TODO: RGIROTI Undo change to root later
             // root = new File("D:\\dev\\devex\\binrepo-devex");
 			BinaryRepository repository = new BinaryRepository(root);
+			repository.setBaseServiceUrl(input.getMapSvcUrl() );
 			
 			if( repository.isBinaryRepositoryAvailable() ){
                  // D:\dev\.maven-enhanced is the Binary Repository

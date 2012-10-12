@@ -36,14 +36,14 @@ public class BinaryRepository {
     private File destination;
 	private FileRepository sourceRepository;
     private FileRepository binaryRepository;
-    private String serviceUrl = null;
+    private String baseServiceUrl = null;
     
     private static Client client = Client.create();
 
     public static final String SVC_BASE_URL = "http://localhost:10000/services/repo";
     public static final String BINREPOSVC_FINDBY_REPOURL_BRANCH_COMMITID = "http://localhost:10000/services/repo/search/byrepourlbranchandcommitid/?";
-    public static final String SVC_BASE = "/services/repo";
-    public static final String SVC_FINDBY_REPO_BRANCH_COMMITID = "/byrepourlbranchandcommitid/?";
+    public static final String SVC_BASE = "services/repo";
+    public static final String SVC_FINDBY_REPO_BRANCH_COMMITID = "byrepourlbranchandcommitid/?";
     public static final String UTF_8 = "UTF-8";
 
 	public BinaryRepository(File root) throws IOException{
@@ -413,7 +413,8 @@ public class BinaryRepository {
 //                "repourl=" + URLEncoder.encode(repoUrl, UTF_8) + "&branch=" + URLEncoder.encode(branch, UTF_8) +
 //                "&commitid=" + URLEncoder.encode(commitHash, UTF_8);
         
-        final String url = getUrlForFindByRepoBranchCommit();
+        final String url = getUrlForFindByRepoBranchCommit() + "repourl=" + URLEncoder.encode(repoUrl, UTF_8) +  "&branch=" + URLEncoder.encode(branch, UTF_8) +"&commitid=" + URLEncoder.encode(commitHash, UTF_8);
+        System.out.println("svc url : " + url );
         WebResource webResource = client.resource(url);
         boolean noContent = false;
         BinRepoBranchCommitDO binRepoBranchCommitDO1 = null;
@@ -489,7 +490,7 @@ public class BinaryRepository {
         // 7. Call the BinRepo service and create a new entity for this change - repoUrl, branch, and commit
         System.out.println("Update Bin Repo Service with the new changes - PUT new object to service");
         final BinRepoBranchCommitDO binRepoBranchCommitDO = newInstance(repoUrl, branch, commitHash);
-        webResource = client.resource(SVC_BASE_URL);
+        webResource = client.resource(getUrlForFindByRepoBranchCommit());
 
         BinRepoBranchCommitDO put = null;
         try {
@@ -531,24 +532,33 @@ public class BinaryRepository {
     public String getUrlForFindByRepoBranchCommit() throws UnsupportedEncodingException{
     	StringBuilder sb = new StringBuilder();
     	
-    	sb.append(getServiceUrl() );
+    	sb.append(getBaseServiceUrl() );
     	sb.append("/");
     	sb.append( SVC_BASE );
     	sb.append("/");
     	sb.append(SVC_FINDBY_REPO_BRANCH_COMMITID );
     	
     	// TODO: remove "//" found anywhere in this string.
-    	
-    	String url = URLEncoder.encode(sb.toString(), UTF_8);
-    	
-    	return url;
+
+    	return sb.toString();
     }
-	public String getServiceUrl() {
-		return serviceUrl;
+    
+    public String getUrlForPut() throws UnsupportedEncodingException{
+    	StringBuilder sb = new StringBuilder();
+    	
+    	sb.append(getBaseServiceUrl() );
+    	sb.append("/");
+    	sb.append( SVC_BASE );
+    	
+    	return sb.toString();
+    }
+    
+	public String getBaseServiceUrl() {
+		return baseServiceUrl;
 	}
 
-	public void setServiceUrl(String serviceUrl) {
-		this.serviceUrl = serviceUrl;
+	public void setBaseServiceUrl(String serviceUrl) {
+		this.baseServiceUrl = serviceUrl;
 	}
 
 }
