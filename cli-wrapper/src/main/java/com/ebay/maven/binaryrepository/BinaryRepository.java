@@ -322,7 +322,17 @@ public class BinaryRepository {
 			throw new GitException("unable to commit", e);
 		}
 
-		// TODO: push
+		// push
+		PushCommand pushCmd = binaryRepo.push();
+		try {
+			pushCmd.call();
+		} catch (InvalidRemoteException e) {
+			throw new GitException("unable to push", e);
+		} catch (TransportException e) {
+			throw new GitException("unable to push", e);
+		} catch (GitAPIException e) {
+			throw new GitException("unable to push", e);
+		}
 	}
 
 	public void copyBinaryFolders(  String pattern,
