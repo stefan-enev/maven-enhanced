@@ -262,7 +262,7 @@ public class BinaryRepository {
 		GHRepository repository = githubOrg.getRepository( GitUtils.getRepositoryName(remoteUrl) );
 		
 		if( repository == null ){
-			GHRepository repo = githubOrg.createRepository(GitUtils.getRepositoryName(remoteUrl), "", "", "nambi, ravi", true);
+			GHRepository repo = githubOrg.createRepository(GitUtils.getRepositoryName(remoteUrl), "Binary repository", "https://github.scm.corp.ebay.com", "Owners", true);
 		}else{
 			// fail, it shouldn't come here
 		}

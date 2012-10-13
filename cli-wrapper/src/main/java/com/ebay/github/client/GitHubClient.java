@@ -9,7 +9,7 @@ import java.util.Map;
 
 public class GitHubClient {
 
-	private static String githubUrl = "https://github.scm.corp.ebay.com/api/v3";
+	private static String githubUrl = "https://github.scm.corp.ebay.com/api/v3/";
 
 	// private static String accessToken = "5d8e186b08062ca405ab25d489fca9823c2a7136";
 
