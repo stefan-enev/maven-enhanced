@@ -1,40 +1,15 @@
 package com.ebay.maven.binaryrepository;
 
-import java.io.File;
-import java.io.FilenameFilter;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-
-import javax.ws.rs.core.MediaType;
-
-import org.eclipse.jgit.api.AddCommand;
-import org.eclipse.jgit.api.CheckoutCommand;
-import org.eclipse.jgit.api.CheckoutResult;
-import org.eclipse.jgit.api.CloneCommand;
-import org.eclipse.jgit.api.CommitCommand;
-import org.eclipse.jgit.api.CreateBranchCommand;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.InitCommand;
-import org.eclipse.jgit.api.ListBranchCommand;
-import org.eclipse.jgit.api.PushCommand;
-import org.eclipse.jgit.api.StatusCommand;
-import org.eclipse.jgit.api.errors.ConcurrentRefUpdateException;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.api.errors.InvalidRefNameException;
-import org.eclipse.jgit.api.errors.InvalidRemoteException;
-import org.eclipse.jgit.api.errors.NoFilepatternException;
-import org.eclipse.jgit.api.errors.NoHeadException;
-import org.eclipse.jgit.api.errors.NoMessageException;
-import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
-import org.eclipse.jgit.api.errors.RefNotFoundException;
-import org.eclipse.jgit.api.errors.TransportException;
-import org.eclipse.jgit.api.errors.UnmergedPathsException;
-import org.eclipse.jgit.api.errors.WrongRepositoryStateException;
+import com.ebay.beans.BinRepoBranchCommitDO;
+import com.ebay.git.utils.GitUtils;
+import com.ebay.github.client.GitHubClient;
+import com.ebay.utils.FileUtil;
+import com.google.common.io.Files;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.UniformInterfaceException;
+import com.sun.jersey.api.client.WebResource;
+import org.eclipse.jgit.api.*;
+import org.eclipse.jgit.api.errors.*;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
@@ -49,14 +24,16 @@ import org.kohsuke.github.GHOrganization;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
 
-import com.ebay.beans.BinRepoBranchCommitDO;
-import com.ebay.git.utils.GitUtils;
-import com.ebay.github.client.GitHubClient;
-import com.ebay.utils.FileUtil;
-import com.google.common.io.Files;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.UniformInterfaceException;
-import com.sun.jersey.api.client.WebResource;
+import javax.ws.rs.core.MediaType;
+import java.io.File;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
 
 public class BinaryRepository {
 
@@ -71,7 +48,7 @@ public class BinaryRepository {
     public static final String SVC_BASE_URL = "http://localhost:10000/services/repo";
     public static final String BINREPOSVC_FINDBY_REPOURL_BRANCH_COMMITID = "http://localhost:10000/services/repo/search/byrepourlbranchandcommitid/?";
     public static final String SVC_BASE = "services/repo";
-    public static final String SVC_FINDBY_REPO_BRANCH_COMMITID = "byrepourlbranchandcommitid/?";
+    public static final String SVC_FINDBY_REPO_BRANCH_COMMITID = "search/byrepourlbranchandcommitid/?";
     public static final String UTF_8 = "UTF-8";
 
 	public BinaryRepository(File root) throws IOException{
@@ -213,7 +190,7 @@ public class BinaryRepository {
 				add.call();
 
 				CommitCommand commit = binaryRepo.commit();
-				commit.setMessage("iniatial commit");
+				commit.setMessage("initial commit");
 
 				commit.call();
 
@@ -469,9 +446,9 @@ public class BinaryRepository {
 //        final String url = BINREPOSVC_FINDBY_REPOURL_BRANCH_COMMITID +
 //                "repourl=" + URLEncoder.encode(repoUrl, UTF_8) + "&branch=" + URLEncoder.encode(branch, UTF_8) +
 //                "&commitid=" + URLEncoder.encode(commitHash, UTF_8);
-        
-        final String url = getUrlForFindByRepoBranchCommit() + "repourl=" + URLEncoder.encode(repoUrl, UTF_8) +  "&branch=" + URLEncoder.encode(branch, UTF_8) +"&commitid=" + URLEncoder.encode(commitHash, UTF_8);
-        System.out.println("svc url : " + url );
+
+        final String url = getUrlForFindByRepoBranchCommit() + "repourl=" + URLEncoder.encode(repoUrl, UTF_8) + "&branch=" + URLEncoder.encode(branch, UTF_8) + "&commitid=" + URLEncoder.encode(commitHash, UTF_8);
+        System.out.println("svc url : " + url);
         WebResource webResource = client.resource(url);
         boolean noContent = false;
         BinRepoBranchCommitDO binRepoBranchCommitDO1 = null;
@@ -506,7 +483,7 @@ public class BinaryRepository {
             System.out.println("File to be added:" + file);
         }
 
-        // add files to "staging"
+        // add files to "staging" - if there is nothing to stage none of the other operations make any sense at all
         if (filesToStage.size() > 0) {
             AddCommand addCmd = binaryRepo.add();
             for (String file : filesToStage) {
@@ -517,46 +494,45 @@ public class BinaryRepository {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }
 
-        // 6. Commit the changes to local and call push after that (use JGit API for this)
-        // 6a. COmmit message should use format "Saving url:branch:commit:UTC time"
-        // commit
-        final CommitCommand commitCommand = binaryRepo.commit();
-        String msg = "Saving Repo:%s Branch:%s CommitHash:%s Time:%s";
-        final String formattedMsg = String.format(msg, repoUrl, branch, commitHash, new Date().toString());
-        commitCommand.setMessage(formattedMsg);
-        try {
-            final RevCommit call = commitCommand.call();
-            commitHash = call.getName();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+            // 6. Commit the changes to local and call push after that (use JGit API for this)
+            // 6a. COmmit message should use format "Saving url:branch:commit:UTC time"
+            // commit
+            final CommitCommand commitCommand = binaryRepo.commit();
+            String msg = "Saving Repo:%s Branch:%s CommitHash:%s Time:%s";
+            final String formattedMsg = String.format(msg, repoUrl, branch, commitHash, new Date().toString());
+            commitCommand.setMessage(formattedMsg);
+            try {
+                final RevCommit call = commitCommand.call();
+                commitHash = call.getName();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
 
-        // push to origin now
-        final PushCommand push = binaryRepo.push();
-        final String remote = push.getRemote();
-        System.out.println("Remote to push to:'" + remote + "'");
-        try {
-            // TODO: RGIROTI 10/09/2012 This is failing at times?????????
-            final Iterable<PushResult> call = push.call();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+            // push to origin now
+            final PushCommand push = binaryRepo.push();
+            final String remote = push.getRemote();
+            System.out.println("Remote to push to:'" + remote + "'");
+            try {
+                final Iterable<PushResult> call = push.call();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
 
-        // 7. Call the BinRepo service and create a new entity for this change - repoUrl, branch, and commit
-        System.out.println("Update Bin Repo Service with the new changes - PUT new object to service");
-        final BinRepoBranchCommitDO binRepoBranchCommitDO = newInstance(repoUrl, branch, commitHash);
-        webResource = client.resource(getUrlForFindByRepoBranchCommit());
+            // 7. Call the BinRepo service and create a new entity for this change - repoUrl, branch, and commit
+            System.out.println("Update Bin Repo Service with the new changes - PUT new object to service");
+            final BinRepoBranchCommitDO binRepoBranchCommitDO = newInstance(repoUrl, branch, commitHash);
+            webResource = client.resource(getUrlForPut());
 
-        BinRepoBranchCommitDO put = null;
-        try {
-            put = webResource.accept(MediaType.APPLICATION_JSON).put(BinRepoBranchCommitDO.class, binRepoBranchCommitDO);
-        } catch (UniformInterfaceException e) {
-            int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
-            System.out.println("status code: " + statusCode);
+            BinRepoBranchCommitDO put = null;
+            try {
+                put = webResource.accept(MediaType.APPLICATION_JSON).put(BinRepoBranchCommitDO.class, binRepoBranchCommitDO);
+            } catch (UniformInterfaceException e) {
+                int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
+                System.out.println("status code: " + statusCode);
+            }
+            System.out.println(put != null ? put.toString() : "Put was null");
         }
-        System.out.println(put != null ? put.toString() : "Put was null");
 
     }
 

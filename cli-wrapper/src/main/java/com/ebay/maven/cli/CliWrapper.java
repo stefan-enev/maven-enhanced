@@ -19,8 +19,6 @@ package com.ebay.maven.cli;
 import com.ebay.maven.binaryrepository.BinaryRepository;
 import com.ebay.maven.binaryrepository.GitException;
 import com.ebay.maven.utils.PomUtils;
-import com.google.common.base.Strings;
-
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.maven.model.Dependency;
@@ -29,7 +27,6 @@ import org.apache.maven.model.Repository;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -95,7 +92,7 @@ public class CliWrapper {
 		File root = new File( System.getProperty("user.dir"));
 		try {
             System.out.println(root.getName());
-            // TODO: RGIROTI Undo change to root later
+            // TODO: RGIROTI Remove next line at some point - refactor this to a test case somewhere
             // root = new File("D:\\dev\\devex\\binrepo-devex");
 			BinaryRepository repository = new BinaryRepository(root);
 			repository.setBaseServiceUrl(input.getMapSvcUrl() );
