@@ -110,6 +110,8 @@
                  				<mainClass>com.ebay.maven.cli.CliWrapper</mainClass>
                 			</transformer>
               			</transformers>
+              			<finalName>maven-lightening</finalName>
+              			<createSourcesJar>true</createSourcesJar>
               			<!-- 
 	        			<filters>
 	        				<artifact>junit:junit</artifact>
