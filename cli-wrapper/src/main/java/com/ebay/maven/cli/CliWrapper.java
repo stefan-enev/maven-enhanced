@@ -18,6 +18,7 @@ package com.ebay.maven.cli;
 
 import com.ebay.maven.binaryrepository.BinaryRepository;
 import com.ebay.maven.binaryrepository.GitException;
+import com.ebay.maven.binaryrepository.MapServiceException;
 import com.ebay.maven.utils.PomUtils;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang.StringUtils;
@@ -32,7 +33,7 @@ import java.util.List;
 /**
  * <code>CliWrapper</code> prepares the workspace before maven kicks in.
  * <ol>
- * 	<li>Downloads all dependencencies and pre-fill the local repository before maven starts.</li>
+ * 	<li>Downloads all dependencies and pre-fill the local repository before maven starts.</li>
  * 	<li>If the project has a <I>Compiled Source Repository</I>, it gets the class files into target/classes folder.
  * </ol>
  *
@@ -117,6 +118,9 @@ public class CliWrapper {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (GitException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (MapServiceException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}

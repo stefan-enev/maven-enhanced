@@ -137,7 +137,7 @@ public class BinaryRepository {
 		return result;
 	}
 
-	public void createBinaryRepository() throws IOException, GitException{
+	public void createBinaryRepository() throws IOException, GitException, MapServiceException{
         // check whether "binary repository" exists
 		if (isBinaryRepositoryAvailable()) throw new GitException("Repository already exists");
 
@@ -162,11 +162,13 @@ public class BinaryRepository {
 		initCmd.setDirectory(binaryRepoFolder);
 		Git binaryRepo=null;
 		try {
+			System.out.println("initializing bare repository");
 			binaryRepo = initCmd.call();
 		} catch (GitAPIException e) {
 			throw new GitException("unable to initialize repository", e);
 		}
 
+		System.out.println("adding readme.md file");
         createReadMeFile(binaryRepoFolder);
 
         // get "status"
@@ -183,6 +185,7 @@ public class BinaryRepository {
                 add.call();
                 CommitCommand commit = binaryRepo.commit();
 				commit.setMessage("initial commit");
+				System.out.println("performing first commit");
                 commit.call();
             } catch (NoFilepatternException e) {
 				throw new GitException("unable to add file(s)", e);
@@ -226,6 +229,7 @@ public class BinaryRepository {
 		GHRepository repository = githubOrg.getRepository( GitUtils.getRepositoryName(remoteUrl) );
 		
 		if (repository == null ) {
+			System.out.println("creating remote repository : " + remoteUrl );
 			GHRepository repo = githubOrg.createRepository(GitUtils.getRepositoryName(remoteUrl), "Binary repository", "https://github.scm.corp.ebay.com", "Owners", true);
 		} else {
 			// fail, it shouldn't come here
@@ -234,6 +238,7 @@ public class BinaryRepository {
 		// add "remote" repository
 		StoredConfig config = binaryRepo.getRepository().getConfig();
 		config.setString("remote", "origin", "url", remoteUrl);
+		System.out.println("adding remote origin " + remoteUrl );
 		config.save();
 		
 		
@@ -245,6 +250,7 @@ public class BinaryRepository {
 		}
 
 		// copy the classes
+		System.out.println("copying binary files");
 		copyBinaryFolders("target", excludes, binaryRepoFolder);
 
 		// get "status"
@@ -267,6 +273,7 @@ public class BinaryRepository {
 		}
 
 		// commit
+		System.out.println("commiting the files");
 		CommitCommand commit = binaryRepo.commit();
 		commit.setMessage("saving the files");
 		try {
@@ -286,6 +293,7 @@ public class BinaryRepository {
 		}
 
 		// push
+		System.out.println("pushing to remote");
 		PushCommand pushCmd = binaryRepo.push();
 		try {
 			pushCmd.call();
@@ -296,7 +304,8 @@ public class BinaryRepository {
 		} catch (GitAPIException e) {
 			throw new GitException("unable to push", e);
 		}
-        // TODO: RGIROTI This is an untested POST. Check this out ASAP
+        
+		// TODO: RGIROTI This is an untested POST. Check this out ASAP
         final String repoUrl = getSourceRemoteUrl();
         // branchName was computed above
         final org.eclipse.jgit.lib.Repository repo = new org.eclipse.jgit.storage.file.FileRepository(f);
@@ -305,16 +314,17 @@ public class BinaryRepository {
         final RevCommit commitRev = revWalk.parseCommit(resolve);
         final String commitHash = commitRev.getName();
 
-        System.out.println("Update Bin Repo Service with the new changes - POST new object to service");
+        System.out.println("Update map service with source and binary commit details");
         final BinRepoBranchCommitDO binRepoBranchCommitDO = newInstance(repoUrl, branchname, commitHash);
         final WebResource resource = client.resource(getUrlForPost());
+        
         BinRepoBranchCommitDO postedDO = null;
-
         try {
             postedDO = resource.accept(MediaType.APPLICATION_JSON).post(BinRepoBranchCommitDO.class, binRepoBranchCommitDO);
         } catch (UniformInterfaceException e) {
             int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
             System.out.println("status code: " + statusCode);
+            throw new MapServiceException("Unable to register the commit details", e);
         }
         System.out.println(postedDO != null ? postedDO.toString() : "postedDO was null");
 
@@ -492,18 +502,19 @@ public class BinaryRepository {
         } catch (UniformInterfaceException e) {
             
         	int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
-            System.out.println(" Status Code HERE: " + statusCode);
+            System.out.println("Service Status Code : " + statusCode);
+            
             
             if( statusCode == 404){
             	noContent = true;
-            }else if( statusCode == 204 ){
+            }else if( statusCode == 204 ){ // FIXME: does the service return 204
             	noContent = true;
             }
             
         } catch (Exception e) { // Catch-all to deal with network problems etc.
             e.printStackTrace();
         }
-        System.out.println(binRepoBranchCommitDO1 != null ? binRepoBranchCommitDO1.toString() : "Resource not found on server");
+        //System.out.println(binRepoBranchCommitDO1 != null ? binRepoBranchCommitDO1.toString() : "Resource not found on server");
 
         // 4. If not copy all the target folders from the source repo to the binary repo - root to root copy of artifacts
         if (noContent) {
