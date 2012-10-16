@@ -105,10 +105,10 @@ public class CliWrapper {
                 repository.updateBinaryRepository();
 
 			} else {
-				if( repository.isRemoteBinaryRepositoryAvailable() ){
+				if (repository.isRemoteBinaryRepositoryAvailable()) {
 					// IN this case, setup must be run before.
 					System.out.println("Remote binary repository is already available, but not cloned. Please run -s option");
-				}else{
+				} else {
 					repository.createBinaryRepository();
 				}                
 			}
@@ -127,7 +127,8 @@ public class CliWrapper {
 		
 		// read the source project
 		File root = new File( System.getProperty("user.dir"));
-		
+        // TODO: RGIROTI Remove next line at some point - refactor this to a test case somewhere
+        // root = new File("D:\\dev\\devex\\binrepo-devex");
 		try {
 			BinaryRepository repository = new BinaryRepository(root);
 			
