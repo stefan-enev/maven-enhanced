@@ -327,6 +327,7 @@ public class BinaryRepository {
 		} catch (GitAPIException e) {
 			throw new GitException("unable to push", e);
 		}
+        // TODO: Write to BinRepo Service at this point
 	}
 
 	public void copyBinaryFolders(  String pattern,

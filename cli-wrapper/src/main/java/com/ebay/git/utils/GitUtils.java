@@ -1,18 +1,17 @@
 package com.ebay.git.utils;
 
 import com.ebay.github.client.GitHubClient;
-import com.ebay.utils.FileUtil;
 import com.google.common.base.Strings;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.StatusCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.errors.NoWorkTreeException;
+import org.eclipse.jgit.lib.StoredConfig;
 import org.kohsuke.github.GHUser;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Set;
 
 public class GitUtils {
 	
@@ -177,50 +176,38 @@ public class GitUtils {
 		return tobeAdded;
 	}
 
-   /* public static boolean existsInGit(final String repo) throws IOException {
-        if (Strings.isNullOrEmpty(repo)) return false;
-        String userName = System.getProperty(FileUtil.USER_NAME);
-
-
-        if (!Strings.isNullOrEmpty(userName)) {
-            final GHUser user = new GitHubClient().connect().getUser(userName);
-            if (user != null) {
-                return user.getRepository(repo) != null;
-            }
-        }
-        return false;
-    }*/
-
     public static boolean existsInGit(final String repo) throws IOException {
         if (Strings.isNullOrEmpty(repo)) return false;
 
         final org.eclipse.jgit.lib.Repository repository = new org.eclipse.jgit.storage.file.FileRepository(repo);
-
-        final Set<String> user = repository.getConfig().getNames("user");
-        final Set<String> sections = user;
-        for (String section : sections) {
-            System.out.println(section);
+        final StoredConfig config = repository.getConfig();
+        final String name = config.getString("user", null, "name");
+        final String email = config.getString("user", null, "email");
+        String[] split = new String[2];
+        if (name == null || email == null) {
+            System.out.println("User identity is unknown!");
+        } else {
+            split = email.split("@");
+            System.out.println("User identity is " + name + " <" + email + ">");
         }
 
-        Set<String> remotes = repository.getConfig().getSubsections("user");
-        for (String remote : remotes) {
-            System.out.println(remote);
+        String userName = null;
+        if (split.length > 0 ) {
+            userName = split[0];
         }
-        /*String userName = System.getProperty(FileUtil.USER_NAME);
-
 
         if (!Strings.isNullOrEmpty(userName)) {
             final GHUser user = new GitHubClient().connect().getUser(userName);
             if (user != null) {
                 return user.getRepository(repo) != null;
             }
-        }*/
+        }
         return false;
     }
 
     public static void main(String[] args) throws Exception {
-        System.out.println(GitUtils.existsInGit("binrepo-devex"));
-        System.out.println(GitUtils.existsInGit("CreatedUsingGitHub-API-Client"));
+        System.out.println("MAIN" + GitUtils.existsInGit("binrepo-devex"));
+        System.out.println("MAIN" + GitUtils.existsInGit("CreatedUsingGitHub-API-Client"));
     }
 
 
