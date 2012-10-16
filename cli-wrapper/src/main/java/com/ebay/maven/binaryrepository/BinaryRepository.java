@@ -46,7 +46,7 @@ public class BinaryRepository {
     
     private static Client client = Client.create();
 
-    public static final String SVC_BASE_URL = "http://stratus-fd12.stratus.dev.ebay.com:8080/"; // http://localhost:10000/services/repo
+    public static final String SVC_BASE_URL = "http://stratus-fd12.stratus.dev.ebay.com:8080"; // http://localhost:10000/services/repo
     public static final String BINREPOSVC_FINDBY_REPOURL_BRANCH_COMMITID = "http://localhost:10000/services/repo/search/byrepourlbranchandcommitid/?";
     public static final String SVC_BASE = "services/repo";
     public static final String SVC_FINDBY_REPO_BRANCH_COMMITID = "search/byrepourlbranchandcommitid/?";
@@ -194,6 +194,82 @@ public class BinaryRepository {
 			}
 		}
 
+
+		
+		// Calculate the remote url for binary repository
+		String remoteUrl = calculateBinaryRepositoryUrl();
+		
+		// TODO: check whether the remote exists, if not create it, else fail
+		GitHub github = new GitHubClient().getGithub();
+		GHOrganization githubOrg = github.getOrganization("Binary");
+		GHRepository repository = githubOrg.getRepository( GitUtils.getRepositoryName(remoteUrl) );
+		
+		if (repository == null ) {
+			System.out.println("creating remote repository : " + remoteUrl );
+			GHRepository repo = githubOrg.createRepository(GitUtils.getRepositoryName(remoteUrl), "Binary repository", "https://github.scm.corp.ebay.com", "Owners", true);
+		} else {
+			// fail, it shouldn't come here
+		}
+		
+		// add "remote" repository
+		StoredConfig config = binaryRepo.getRepository().getConfig();
+		config.setString("remote", "origin", "url", remoteUrl);
+		System.out.println("adding remote origin " + remoteUrl );
+		config.save();
+		
+		// get "status"
+		StatusCommand stat = binaryRepo.status();
+		Collection<String> filesToAdd = GitUtils.getFilesToStage(stat);
+
+		// add files to "staging"
+		if( filesToAdd.size() > 0 ){
+			AddCommand addCmd = binaryRepo.add();
+			for( String file : filesToAdd ){
+				addCmd.addFilepattern(file);
+			}
+            try {
+				addCmd.call();
+			} catch (NoFilepatternException e) {
+				throw new GitException("unable to add files", e);
+			} catch (GitAPIException e) {
+				throw new GitException("unable to add files", e);
+			}
+		}
+
+		// commit
+		System.out.println("commiting the files");
+		CommitCommand commit = binaryRepo.commit();
+		commit.setMessage("adding readme.md file");
+		
+		try {
+			commit.call();
+		} catch (NoHeadException e) {
+			throw new GitException("unable to commit", e);
+		} catch (NoMessageException e) {
+			throw new GitException("unable to commit", e);
+		} catch (UnmergedPathsException e) {
+			throw new GitException("unable to commit", e);
+		} catch (ConcurrentRefUpdateException e) {
+			throw new GitException("unable to commit", e);
+		} catch (WrongRepositoryStateException e) {
+			throw new GitException("unable to commit", e);
+		} catch (GitAPIException e) {
+			throw new GitException("unable to commit", e);
+		}
+
+		// push
+		System.out.println("pushing to remote");
+		PushCommand push = binaryRepo.push();
+		try {
+			push.call();
+		} catch (InvalidRemoteException e) {
+			throw new GitException("unable to push", e);
+		} catch (TransportException e) {
+			throw new GitException("unable to push", e);
+		} catch (GitAPIException e) {
+			throw new GitException("unable to push", e);
+		}
+		
 		// read the branch from "source" repository
 		String branchname = sourceRepository.getBranch();
 
@@ -219,28 +295,6 @@ public class BinaryRepository {
 				throw new GitException("unable to create a branch", e);
 			}
 		}
-		
-		// Calculate the remote url for binary repository
-		String remoteUrl = calculateBinaryRepositoryUrl();
-		
-		// TODO: check whether the remote exists, if not create it, else fail
-		GitHub github = new GitHubClient().getGithub();
-		GHOrganization githubOrg = github.getOrganization("Binary");
-		GHRepository repository = githubOrg.getRepository( GitUtils.getRepositoryName(remoteUrl) );
-		
-		if (repository == null ) {
-			System.out.println("creating remote repository : " + remoteUrl );
-			GHRepository repo = githubOrg.createRepository(GitUtils.getRepositoryName(remoteUrl), "Binary repository", "https://github.scm.corp.ebay.com", "Owners", true);
-		} else {
-			// fail, it shouldn't come here
-		}
-		
-		// add "remote" repository
-		StoredConfig config = binaryRepo.getRepository().getConfig();
-		config.setString("remote", "origin", "url", remoteUrl);
-		System.out.println("adding remote origin " + remoteUrl );
-		config.save();
-		
 		
 		// find the "localobr" folders and exclude them during copy
 		List<String> excludes = new ArrayList<String>();
@@ -274,10 +328,10 @@ public class BinaryRepository {
 
 		// commit
 		System.out.println("commiting the files");
-		CommitCommand commit = binaryRepo.commit();
-		commit.setMessage("saving the files");
+		CommitCommand commit1 = binaryRepo.commit();
+		commit1.setMessage("saving the files");
 		try {
-			commit.call();
+			commit1.call();
 		} catch (NoHeadException e) {
 			throw new GitException("unable to commit", e);
 		} catch (NoMessageException e) {
@@ -326,8 +380,9 @@ public class BinaryRepository {
             System.out.println("status code: " + statusCode);
             throw new MapServiceException("Unable to register the commit details", e);
         }
-        System.out.println(postedDO != null ? postedDO.toString() : "postedDO was null");
-
+        
+        //System.out.println(postedDO != null ? postedDO.toString() : "postedDO was null");
+        System.out.println("updated the map service");
     }
 
     private void createReadMeFile(final File binaryRepoFolder) throws IOException {
@@ -589,6 +644,7 @@ public class BinaryRepository {
         }
     }
 
+    // FIXME : the URL and commit hash is same on both sides
     private BinRepoBranchCommitDO newInstance(final String repoUrl, final String branch, final String commitHash) throws UnsupportedEncodingException {
         BinRepoBranchCommitDO binRepoBranchCommitDO = new BinRepoBranchCommitDO();
         binRepoBranchCommitDO.setRepoUrl(URLEncoder.encode(repoUrl, UTF_8));
