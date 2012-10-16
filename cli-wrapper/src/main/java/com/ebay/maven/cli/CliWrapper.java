@@ -91,27 +91,27 @@ public class CliWrapper {
 		// assume the current directory the "root" of the project
 		File root = new File( System.getProperty("user.dir"));
 		try {
-            System.out.println(root.getName());
+           
+			// System.out.println(root.getName());
+			
             // TODO: RGIROTI Remove next line at some point - refactor this to a test case somewhere
             // root = new File("D:\\dev\\devex\\binrepo-devex");
 			BinaryRepository repository = new BinaryRepository(root);
-			repository.setBaseServiceUrl(input.getMapSvcUrl() );
+			if( input.getMapSvcUrl() != null ){
+				repository.setBaseServiceUrl(input.getMapSvcUrl() );
+			}
 			
 			if( repository.isBinaryRepositoryAvailable() ){
-                 // D:\dev\.maven-enhanced is the Binary Repository
-				// todo: update
                 repository.updateBinaryRepository();
 
-
 			} else {
-                // 2 cases:
-                // 1. The repo is not available locally or remotely
-                repository.createBinaryRepository();
-                // 2. TODO: The repo is not locally available but is present remotely - clone it and then update it
+				if( repository.isRemoteBinaryRepositoryAvailable() ){
+					// IN this case, setup must be run before.
+					System.out.println("Remote binary repository is already available, but not cloned. Please run -s option");
+				}else{
+					repository.createBinaryRepository();
+				}                
 			}
-
-
-            //
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -141,6 +141,9 @@ public class CliWrapper {
 			}
 			
 		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (GitException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
