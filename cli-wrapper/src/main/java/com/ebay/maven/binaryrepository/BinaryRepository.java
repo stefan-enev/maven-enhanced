@@ -52,66 +52,50 @@ public class BinaryRepository {
     public static final String SVC_FINDBY_REPO_BRANCH_COMMITID = "search/byrepourlbranchandcommitid/?";
     public static final String UTF_8 = "UTF-8";
 
-	public BinaryRepository(File root) throws IOException{
-
-		if (root.canRead() && root.isDirectory()){
-
-			this.root = root;
+	public BinaryRepository(File root) throws IOException {
+        if (root.canRead() && root.isDirectory()){
+            this.root = root;
 
 			// get the repository name.
 			FileRepositoryBuilder repobuiler = new FileRepositoryBuilder();
 			this.sourceRepository = repobuiler.findGitDir(root).build();
 			
 			ghClient = new GitHubClient();
-
-		}else{
+        } else{
 			// TODO: throw exception
 		}
+    }
 
-	}
-
-	public String getRepositoryName(){
+	public String getRepositoryName() {
 		String remoteUrl = sourceRepository.getConfig().getString("remote", "origin", "url");
 		String repository = GitUtils.getRepositoryName(remoteUrl);
 		return repository;
 	}
 
-	public String getSourceRemoteUrl(){
+	public String getSourceRemoteUrl() {
 		String remoteUrl = sourceRepository.getConfig().getString("remote", "origin", "url");
 		return remoteUrl;
 	}
 
 	public boolean isBinaryRepositoryAvailable(){
-
-		boolean result = false;
-
-		// get the name of the source repository
+        boolean result = false;
+        // get the name of the source repository
 		String repositoryName = getRepositoryName();
-
-		// find where ".git" folder is found
+        // find where ".git" folder is found
 		File f = sourceRepository.getDirectory();
-
-		// repository foldername
+        // repository foldername
 		String repositoryFolderName = f.getParentFile().getName();
-
-		// go to parent directory
+        // go to parent directory
 		File parent = f.getParentFile().getParentFile();
 		File binaryRepoFolder = new File( parent , ( "." + repositoryFolderName) );
-
-		// check whether ".SourceRepo.git" folder exists
-		if( binaryRepoFolder.exists() &&
-				binaryRepoFolder.isDirectory() &&
-				binaryRepoFolder.canRead() ){
-
-		// check whether ".SourceRepo.git/.git" exists
+        // check whether ".SourceRepo.git" folder exists
+		if (binaryRepoFolder.exists() && binaryRepoFolder.isDirectory() && binaryRepoFolder.canRead()) {
+            // check whether ".SourceRepo.git/.git" exists
 			File binGit = new File(binaryRepoFolder, ".git");
-			if( binGit.exists() &&
-					binGit.isDirectory() &&
-					binGit.canRead() ){
+			if( binGit.exists() && binGit.isDirectory() && binGit.canRead() ){
 				result = true;
 			}
 		}
-		// TODO: Check that the repository exists both locally and remotely
 		return result && isRepoPresentInGit();
 	}
 
@@ -126,9 +110,8 @@ public class BinaryRepository {
         return b;
     }
 
-	public boolean isRemoteBinaryRepositoryAvailable() throws GitException{
-
-		boolean result = false;
+	public boolean isRemoteBinaryRepositoryAvailable() throws GitException {
+        boolean result = false;
 
 		String srcRepoUrl = getSourceRemoteUrl();
 		String org = GitUtils.getOrgName(srcRepoUrl);
@@ -141,12 +124,12 @@ public class BinaryRepository {
 			GHOrganization ghOrg = ghClient.getGithub().getOrganization("Binary");
 			GHRepository repository = ghOrg.getRepository(binaryRepoName);
 			
-			if(repository != null ){
+			if (repository != null ){
 				// TODO: any additional check needs to be done.
 				result = true;
 			}
 		} catch (IOException e) {
-			throw new GitException( "unable to query the repository: " + binaryRepoName , e);
+			throw new GitException("unable to query the repository: " + binaryRepoName , e);
 		}
 
 		return result;
@@ -182,36 +165,24 @@ public class BinaryRepository {
 			throw new GitException("unable to initialize repository", e);
 		}
 
-		// add a "README.md" file and commit
-		File readmeFile = new File(binaryRepoFolder, "README.md");
-		List<String> readmeContent = new ArrayList<String>();
-		readmeContent.add("Binary Repository For " + getSourceRemoteUrl() );
-		readmeContent.add("=======================================================");
-		readmeContent.add("");
-		readmeContent.add("Stores the class files for the above source repository");
-		org.apache.commons.io.FileUtils.writeLines(readmeFile, readmeContent, "\n");
+        createReadMeFile(binaryRepoFolder);
 
-		// get "status"
+        // get "status"
 		StatusCommand statusC = binaryRepo.status();
 		Collection<String> toadd = GitUtils.getFilesToStage(statusC);
 
 		// add "readme" file to staging
-		if( toadd.size() > 0 ){
+		if (toadd.size() > 0) {
 			AddCommand add = binaryRepo.add();
 			for( String file : toadd ){
 				add.addFilepattern(file);
 			}
-
-			try {
-
-				add.call();
-
-				CommitCommand commit = binaryRepo.commit();
+            try {
+                add.call();
+                CommitCommand commit = binaryRepo.commit();
 				commit.setMessage("initial commit");
-
-				commit.call();
-
-			} catch (NoFilepatternException e) {
+                commit.call();
+            } catch (NoFilepatternException e) {
 				throw new GitException("unable to add file(s)", e);
 			} catch (GitAPIException e) {
 				throw new GitException("Unable to add or commit", e);
@@ -233,10 +204,7 @@ public class BinaryRepository {
 				CheckoutCommand checkout = binaryRepo.checkout();
 				checkout.setName(branchname);
 				checkout.call();
-
-
-				
-			} catch (RefAlreadyExistsException e) {
+            } catch (RefAlreadyExistsException e) {
 				throw new GitException("unable to create a branch", e);
 			} catch (RefNotFoundException e) {
 				throw new GitException("unable to create a branch", e);
@@ -255,9 +223,9 @@ public class BinaryRepository {
 		GHOrganization githubOrg = github.getOrganization("Binary");
 		GHRepository repository = githubOrg.getRepository( GitUtils.getRepositoryName(remoteUrl) );
 		
-		if( repository == null ){
+		if (repository == null ) {
 			GHRepository repo = githubOrg.createRepository(GitUtils.getRepositoryName(remoteUrl), "Binary repository", "https://github.scm.corp.ebay.com", "Owners", true);
-		}else{
+		} else {
 			// fail, it shouldn't come here
 		}
 		
@@ -287,8 +255,7 @@ public class BinaryRepository {
 			for( String file : tobeAdded ){
 				addCmd.addFilepattern(file);
 			}
-
-			try {
+            try {
 				addCmd.call();
 			} catch (NoFilepatternException e) {
 				throw new GitException("unable to add files", e);
@@ -327,18 +294,44 @@ public class BinaryRepository {
 		} catch (GitAPIException e) {
 			throw new GitException("unable to push", e);
 		}
-        // TODO: Write to BinRepo Service at this point
-	}
+        // TODO: RGIROTI This is an untested POST. Check this out ASAP
+        final String repoUrl = getSourceRemoteUrl();
+        // branchName was computed above
+        final org.eclipse.jgit.lib.Repository repo = new org.eclipse.jgit.storage.file.FileRepository(f);
+        final RevWalk revWalk = new RevWalk(repo);
+        final ObjectId resolve = repo.resolve(Constants.HEAD);
+        final RevCommit commitRev = revWalk.parseCommit(resolve);
+        final String commitHash = commitRev.getName();
 
-	public void copyBinaryFolders(  String pattern,
-									List<String> exclusionList,
-									File destination )
-											throws IOException{
+        System.out.println("Update Bin Repo Service with the new changes - POST new object to service");
+        final BinRepoBranchCommitDO binRepoBranchCommitDO = newInstance(repoUrl, branchname, commitHash);
+        final WebResource resource = client.resource(getUrlForPost());
+        BinRepoBranchCommitDO postedDO = null;
 
-		File root = sourceRepository.getDirectory().getParentFile();
+        try {
+            postedDO = resource.accept(MediaType.APPLICATION_JSON).post(BinRepoBranchCommitDO.class, binRepoBranchCommitDO);
+        } catch (UniformInterfaceException e) {
+            int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
+            System.out.println("status code: " + statusCode);
+        }
+        System.out.println(postedDO != null ? postedDO.toString() : "postedDO was null");
 
+    }
 
-		Collection<File> files = FileUtil.findDirectoriesThatEndWith(root, pattern);
+    private void createReadMeFile(final File binaryRepoFolder) throws IOException {
+        // add a "README.md" file and commit
+        final File readmeFile = new File(binaryRepoFolder, "README.md");
+        final List<String> readmeContent = new ArrayList<String>();
+        readmeContent.add("Binary Repository For " + getSourceRemoteUrl() );
+        readmeContent.add("=======================================================");
+        readmeContent.add("");
+        readmeContent.add("Stores the class files for the above source repository");
+        org.apache.commons.io.FileUtils.writeLines(readmeFile, readmeContent, "\n");
+    }
+
+    public void copyBinaryFolders(String pattern, List<String> exclusionList, File destination) throws IOException {
+        File root = sourceRepository.getDirectory().getParentFile();
+        Collection<File> files = FileUtil.findDirectoriesThatEndWith(root, pattern);
 
 		FilenameFilter filter = new FilenameFilter() {
 			public boolean accept(File dir, String name) {
@@ -346,20 +339,14 @@ public class BinaryRepository {
 			}
 		};
 
-
-		int pathlength = root.getCanonicalPath().length();
-
-		for( File f : files ){
-
-			// construct the directory to copied
-			if( f.getCanonicalPath().startsWith(root.getCanonicalPath() )){
-
-				// get the path that is additional
+        int pathlength = root.getCanonicalPath().length();
+        for (File f : files) {
+            // construct the directory to copied
+			if (f.getCanonicalPath().startsWith(root.getCanonicalPath())) {
+                // get the path that is additional
 				String pathfraction  = f.getCanonicalPath().substring(pathlength);
-
-				File d = new File(destination, pathfraction );
-
-				System.out.println( "copying " + f.getCanonicalPath() + " to " + d.getAbsolutePath() );
+                File d = new File(destination, pathfraction );
+                System.out.println( "copying " + f.getCanonicalPath() + " to " + d.getAbsolutePath() );
 				FileUtil.doCopyDirectory(f, d, filter, true, exclusionList);
 			}
 		}
@@ -388,11 +375,10 @@ public class BinaryRepository {
 		File binaryRepoFolder = new File( parent , ( "." + sourceRepoFolderName) );
 
 		// read the branch from "source" repository
-		String branchname = "master";
+		String branchName = "master";
 		try {
-			branchname = sourceRepository.getBranch();
+			branchName = sourceRepository.getBranch();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -407,22 +393,49 @@ public class BinaryRepository {
 			Git binaryRepository = cloneCmd.call();
 
 			CheckoutCommand checkoutCmd = binaryRepository.checkout();
-
-			checkoutCmd.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.SET_UPSTREAM );
-			checkoutCmd.setName("origin/" + branchname);
+            checkoutCmd.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.SET_UPSTREAM );
+			checkoutCmd.setName("origin/" + branchName);
 			// TODO: checkout is not happening properly for a branch. fix it.
 			Ref branch = checkoutCmd.call();
 
 			CheckoutResult result = checkoutCmd.getResult();
 			//System.out.println( result.getStatus());
 			
-			// TODO: find out whether Binary is uptodate with the sources
+			// TODO: find out whether Binary is up-to-date with the sources
 			//       call the MapSvc to find it out.
+            final org.eclipse.jgit.lib.Repository repository = new org.eclipse.jgit.storage.file.FileRepository(f);
+            final RevWalk revWalk = new RevWalk(repository);
+            final ObjectId resolve = repository.resolve(Constants.HEAD);
+            final RevCommit commit = revWalk.parseCommit(resolve);
+            final String commitHash = commit.getName();
+            final String url = getUrlForFindByRepoBranchCommit() + "repourl=" + URLEncoder.encode(getSourceRemoteUrl(), UTF_8) +
+                    "&branch=" + URLEncoder.encode(branchName, UTF_8) + "&commitid=" + URLEncoder.encode(commitHash, UTF_8);
 
-			// if it matches copy the .class files from binaryrepository to source-repository
-			FileUtil.copyBinaryFolders( binaryRepoFolder, sourceDir, ".git");
+            final WebResource webResource = client.resource(url);
+            boolean noContent = false;
+            BinRepoBranchCommitDO binRepoBranchCommitDO = null;
+            try {
+                binRepoBranchCommitDO = webResource.accept(MediaType.APPLICATION_JSON_TYPE).get(BinRepoBranchCommitDO.class);
+            } catch (UniformInterfaceException e) {
+                int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
+                noContent = (statusCode == 204);
+            } catch (Exception e) { // catch-all in case there are network problems
+                e.printStackTrace();
+            }
+            // No matching entry found in mapping service
+            // TODO: RGIROTI Talk to Nambi and find out what we want to do in this case
+            if (noContent) {
 
-		} catch (InvalidRemoteException e) {
+            } else {
+                // if it matches copy the .class files from binaryrepository to source-repository
+                if (binRepoBranchCommitDO != null &&
+                        binRepoBranchCommitDO.getRepoUrl().equalsIgnoreCase(getSourceRemoteUrl()) &&
+                        binRepoBranchCommitDO.getBranch().equalsIgnoreCase(branchName) &&
+                        binRepoBranchCommitDO.getCommitId().equalsIgnoreCase(commitHash)) {
+                    FileUtil.copyBinaryFolders(binaryRepoFolder, sourceDir, ".git");
+                }
+            }
+        } catch (InvalidRemoteException e) {
 			throw new GitException("unable to clone " + giturl, e);
 		} catch (TransportException e) {
 			throw new GitException("unable to clone " + giturl, e);
@@ -431,19 +444,14 @@ public class BinaryRepository {
 		} catch (IOException e) {
 			throw new GitException("unable to clone " + giturl, e);
 		}
-
-	}
+    }
 
     public void updateBinaryRepository() throws IOException, GitException {
-    	
-    	
         // 1. Check if repository exists remotely git@github.scm.corp.ebay.com/Binary/Repo_Binary.git
         // find the name of the "source repository"
         final String repoUrl = getSourceRemoteUrl();
 
-        // find where ".git" folder is found
-        // SourceRepository = D:\dev\devex\binrepo-devex
-        // BinaryRepository = D:\dev\devex\.binrepo-devex
+        // find where ".git" folder is found  // SourceRepository = D:\dev\devex\binrepo-devex // BinaryRepository = D:\dev\devex\.binrepo-devex
         final File srcRepoDir = sourceRepository.getDirectory();
         final File sourceDir = srcRepoDir.getParentFile();
 
@@ -466,10 +474,6 @@ public class BinaryRepository {
         System.out.println("CommitHash:" + commitHash + "\tMessage:" + commit.getFullMessage());
 
         // 3. Call the BinRepo service and check if a corresponding BinRepo entry exists
-//        final String url = BINREPOSVC_FINDBY_REPOURL_BRANCH_COMMITID +
-//                "repourl=" + URLEncoder.encode(repoUrl, UTF_8) + "&branch=" + URLEncoder.encode(branch, UTF_8) +
-//                "&commitid=" + URLEncoder.encode(commitHash, UTF_8);
-
         final String url = getUrlForFindByRepoBranchCommit() + "repourl=" + URLEncoder.encode(repoUrl, UTF_8) + "&branch=" + URLEncoder.encode(branch, UTF_8) + "&commitid=" + URLEncoder.encode(commitHash, UTF_8);
         System.out.println("svc url : " + url);
         WebResource webResource = client.resource(url);
@@ -508,7 +512,6 @@ public class BinaryRepository {
 
         // add files to "staging" - if there is nothing to stage none of the other operations make any sense at all
         if (filesToStage.size() > 0) {
-        	
             AddCommand addCmd = binaryRepo.add();
             for (String file : filesToStage) {
                 addCmd.addFilepattern(file);
@@ -544,20 +547,19 @@ public class BinaryRepository {
             }
 
             // 7. Call the BinRepo service and create a new entity for this change - repoUrl, branch, and commit
-            System.out.println("Update Bin Repo Service with the new changes - PUT new object to service");
+            System.out.println("Update Bin Repo Service with the new changes - POST new object to service");
             final BinRepoBranchCommitDO binRepoBranchCommitDO = newInstance(repoUrl, branch, commitHash);
-            webResource = client.resource(getUrlForPut());
+            webResource = client.resource(getUrlForPost());
 
-            BinRepoBranchCommitDO put = null;
+            BinRepoBranchCommitDO postedDO = null;
             try {
-                put = webResource.accept(MediaType.APPLICATION_JSON).put(BinRepoBranchCommitDO.class, binRepoBranchCommitDO);
+                postedDO = webResource.accept(MediaType.APPLICATION_JSON).post(BinRepoBranchCommitDO.class, binRepoBranchCommitDO);
             } catch (UniformInterfaceException e) {
                 int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
                 System.out.println("status code: " + statusCode);
             }
-            System.out.println(put != null ? put.toString() : "Put was null");
+            System.out.println(postedDO != null ? postedDO.toString() : "Put was null");
         }
-
     }
 
     private BinRepoBranchCommitDO newInstance(final String repoUrl, final String branch, final String commitHash) throws UnsupportedEncodingException {
@@ -588,26 +590,21 @@ public class BinaryRepository {
 
     public String getUrlForFindByRepoBranchCommit() throws UnsupportedEncodingException{
     	StringBuilder sb = new StringBuilder();
-    	
-    	sb.append(getBaseServiceUrl() );
+        sb.append(getBaseServiceUrl() );
     	sb.append("/");
     	sb.append( SVC_BASE );
     	sb.append("/");
     	sb.append(SVC_FINDBY_REPO_BRANCH_COMMITID );
-    	
-    	// TODO: remove "//" found anywhere in this string.
-
+        // TODO: Convert any "//" to "/" Look at main()
     	return sb.toString();
     }
     
-    public String getUrlForPut() throws UnsupportedEncodingException{
+    public String getUrlForPost() throws UnsupportedEncodingException{
     	StringBuilder sb = new StringBuilder();
-    	
-    	sb.append(getBaseServiceUrl() );
+        sb.append(getBaseServiceUrl() );
     	sb.append("/");
     	sb.append( SVC_BASE );
-    	
-    	return sb.toString();
+        return sb.toString();
     }
     
     public String calculateBinaryRepositoryUrl(){
@@ -634,5 +631,12 @@ public class BinaryRepository {
 	public void setBaseServiceUrl(String serviceUrl) {
 		this.baseServiceUrl = serviceUrl;
 	}
+
+
+    public static void main(String[] args) {
+        String input = "hello://world//of//Java//Python_is_good_too";
+        // TODO: FIX this regex to escape the double slashes
+        System.out.println(input.replaceAll("[^://]/{2}", "/"));
+    }
 
 }
