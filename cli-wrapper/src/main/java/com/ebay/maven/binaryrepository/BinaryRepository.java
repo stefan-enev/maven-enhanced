@@ -42,10 +42,11 @@ public class BinaryRepository {
 	private FileRepository sourceRepository;
     private FileRepository binaryRepository;
     private String baseServiceUrl = null;
+    private GitHubClient ghClient = null;
     
     private static Client client = Client.create();
 
-    public static final String SVC_BASE_URL = "http://localhost:10000/services/repo";
+    public static final String SVC_BASE_URL = "http://stratus-fd12.stratus.dev.ebay.com:8080/"; // http://localhost:10000/services/repo
     public static final String BINREPOSVC_FINDBY_REPOURL_BRANCH_COMMITID = "http://localhost:10000/services/repo/search/byrepourlbranchandcommitid/?";
     public static final String SVC_BASE = "services/repo";
     public static final String SVC_FINDBY_REPO_BRANCH_COMMITID = "search/byrepourlbranchandcommitid/?";
@@ -60,6 +61,8 @@ public class BinaryRepository {
 			// get the repository name.
 			FileRepositoryBuilder repobuiler = new FileRepositoryBuilder();
 			this.sourceRepository = repobuiler.findGitDir(root).build();
+			
+			ghClient = new GitHubClient();
 
 		}else{
 			// TODO: throw exception
@@ -123,14 +126,28 @@ public class BinaryRepository {
         return b;
     }
 
-	public boolean isRemoteBinaryRepositoryAvailable(){
+	public boolean isRemoteBinaryRepositoryAvailable() throws GitException{
 
 		boolean result = false;
 
-		String repositoryName = getRepositoryName();
-
+		String srcRepoUrl = getSourceRemoteUrl();
+		String org = GitUtils.getOrgName(srcRepoUrl);
+		String repoName = GitUtils.getRepositoryName(srcRepoUrl);
+		
+		String binaryRepoName = calculateBinaryRepositoryName(org, repoName);
+		
 		// TODO: use github apis to check whether the repository is available
-		result = true;
+		try {
+			GHOrganization ghOrg = ghClient.getGithub().getOrganization("Binary");
+			GHRepository repository = ghOrg.getRepository(binaryRepoName);
+			
+			if(repository != null ){
+				// TODO: any additional check needs to be done.
+				result = true;
+			}
+		} catch (IOException e) {
+			throw new GitException( "unable to query the repository: " + binaryRepoName , e);
+		}
 
 		return result;
 	}
@@ -347,10 +364,14 @@ public class BinaryRepository {
 		}
 	}
 
-	public void cloneBinaryRepository() {
+	public void cloneBinaryRepository() throws GitException {
 
 		// find the name of the "source repository"
-		String sourceRepoName = getRepositoryName();
+		String srcRepoUrl = getSourceRemoteUrl();
+		String org = GitUtils.getOrgName(srcRepoUrl);
+		String repoName = GitUtils.getRepositoryName(srcRepoUrl);
+		String binaryRepoName = calculateBinaryRepositoryName(org, repoName);
+		
 
 		// find where ".git" folder is found
 		File f = sourceRepository.getDirectory();
@@ -359,7 +380,7 @@ public class BinaryRepository {
 		String sourceRepoFolderName = f.getParentFile().getName();
 
 		// construct the binary repository URL
-		String giturl = "git@github.scm.corp.ebay.com:Binary/" + sourceRepoName + "_binary.git";
+		String giturl = "git@github.scm.corp.ebay.com:Binary/" + binaryRepoName + ".git";
 
 		// calculate binary repository folder
 		File parent = f.getParentFile().getParentFile();
@@ -392,28 +413,29 @@ public class BinaryRepository {
 			Ref branch = checkoutCmd.call();
 
 			CheckoutResult result = checkoutCmd.getResult();
-			System.out.println( result.getStatus());
+			//System.out.println( result.getStatus());
+			
+			// TODO: find out whether Binary is uptodate with the sources
+			//       call the MapSvc to find it out.
 
-			// copy the .class files from binaryrepository to source-repository
+			// if it matches copy the .class files from binaryrepository to source-repository
 			FileUtil.copyBinaryFolders( binaryRepoFolder, sourceDir, ".git");
 
 		} catch (InvalidRemoteException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new GitException("unable to clone " + giturl, e);
 		} catch (TransportException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new GitException("unable to clone " + giturl, e);
 		} catch (GitAPIException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new GitException("unable to clone " + giturl, e);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new GitException("unable to clone " + giturl, e);
 		}
 
 	}
 
     public void updateBinaryRepository() throws IOException, GitException {
+    	
+    	
         // 1. Check if repository exists remotely git@github.scm.corp.ebay.com/Binary/Repo_Binary.git
         // find the name of the "source repository"
         final String repoUrl = getSourceRemoteUrl();
@@ -485,6 +507,7 @@ public class BinaryRepository {
 
         // add files to "staging" - if there is nothing to stage none of the other operations make any sense at all
         if (filesToStage.size() > 0) {
+        	
             AddCommand addCmd = binaryRepo.add();
             for (String file : filesToStage) {
                 addCmd.addFilepattern(file);
@@ -592,11 +615,15 @@ public class BinaryRepository {
     	if( srcUrl.contains("scm.corp.ebay.com")){
     		String org = GitUtils.getOrgName(srcUrl);
     		String repoName = GitUtils.getRepositoryName(srcUrl);
-    		remoteUrl = "git@github.scm.corp.ebay.com:Binary/" +  org + "_" + repoName + "_binary.git" ;
+    		remoteUrl = "git@github.scm.corp.ebay.com:Binary/" +  calculateBinaryRepositoryName(org, repoName) + ".git";
     	}else{
     		
     	}
     	return remoteUrl;
+    }
+    
+    public String calculateBinaryRepositoryName(String org , String repoName ){
+    	return org + "_" + repoName + "_binary";
     }
     
 	public String getBaseServiceUrl() {
