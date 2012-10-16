@@ -415,7 +415,7 @@ public class BinaryRepository {
 			CheckoutResult result = checkoutCmd.getResult();
 			//System.out.println( result.getStatus());
 			
-			// TODO: find out whether Binary is uptodate with the sources
+			// TODO: find out whether Binary is upto-date with the sources
 			//       call the MapSvc to find it out.
 
 			// if it matches copy the .class files from binaryrepository to source-repository
