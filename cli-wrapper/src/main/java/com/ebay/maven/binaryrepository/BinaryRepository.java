@@ -115,7 +115,7 @@ public class BinaryRepository {
     public boolean isRepoPresentInGit() {
         boolean b = false;
         try {
-            b = FileUtil.existsInGit(getRepositoryName());
+            b = GitUtils.existsInGit(getRepositoryName());
         } catch (IOException e) {
             // TODO: Log it
             e.printStackTrace();

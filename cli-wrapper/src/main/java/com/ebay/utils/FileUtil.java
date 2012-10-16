@@ -1,10 +1,8 @@
 package com.ebay.utils;
 
-import com.ebay.github.client.GitHubClient;
-import com.google.common.base.Strings;
+import com.ebay.git.utils.GitUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
-import org.kohsuke.github.GHUser;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -203,24 +201,6 @@ public class FileUtil {
 		ENDS_WITH,
 		CONTAINS;
 	}
-
-	// TODO: move it github client
-    public static boolean existsInGit(final String repo) throws IOException {
-        if (Strings.isNullOrEmpty(repo)) return false;
-        String userName = System.getProperty(USER_NAME);
-        if (!Strings.isNullOrEmpty(userName)) {
-            final GHUser user = new GitHubClient().connect().getUser(userName);
-            if (user != null) {
-                return user.getRepository(repo) != null;
-            }
-        }
-        return false;
-    }
-
-    public static void main(String[] args) throws Exception {
-        System.out.println(existsInGit("binrepo-devex"));
-        System.out.println(existsInGit("CreatedUsingGitHub-API-Client"));
-    }
 
 
 
