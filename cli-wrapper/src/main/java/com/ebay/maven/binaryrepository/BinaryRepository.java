@@ -55,10 +55,12 @@ public class BinaryRepository {
 	public BinaryRepository(File root) throws IOException {
         if (root.canRead() && root.isDirectory()){
             this.root = root;
+            this.baseServiceUrl = SVC_BASE_URL;
 
 			// get the repository name.
 			FileRepositoryBuilder repobuiler = new FileRepositoryBuilder();
 			this.sourceRepository = repobuiler.findGitDir(root).build();
+			
 			
 			ghClient = new GitHubClient();
         } else{
@@ -457,35 +459,47 @@ public class BinaryRepository {
         final File sourceDir = srcRepoDir.getParentFile();
 
         final String sourceRepoFolder = srcRepoDir.getParentFile().getCanonicalPath();
-        System.out.println("SourceRepository = " + sourceRepoFolder);
+        
 
         final File parent = srcRepoDir.getParentFile().getParentFile();
         final File binaryRepoDir = new File(parent, "." + srcRepoDir.getParentFile().getName());
-        System.out.println("BinaryRepository = " + binaryRepoDir.getCanonicalPath());
+        System.out.println("SourceRepository = " + sourceRepoFolder + ", BinaryRepository = " + binaryRepoDir.getCanonicalPath());
+        
 
         // 2. Get branch/commit hash for the source repo - the actual source code
         final org.eclipse.jgit.lib.Repository repository = new org.eclipse.jgit.storage.file.FileRepository(srcRepoDir);
         final String branch = repository.getBranch();
-        System.out.println("SourceRepository = " + sourceRepository + " RepoUrl = " + repoUrl + " Branch = " + branch);
+        
 
         final RevWalk revWalk = new RevWalk(repository);
         final ObjectId resolve = repository.resolve(Constants.HEAD);
         final RevCommit commit = revWalk.parseCommit(resolve);
         String commitHash = commit.getName(); // Can pass this instead of just using HEAD always
-        System.out.println("CommitHash:" + commitHash + "\tMessage:" + commit.getFullMessage());
+        System.out.println("Source remote=" + repoUrl + ", commitid=" + commitHash + ", Branch = " + branch );
+        
 
         // 3. Call the BinRepo service and check if a corresponding BinRepo entry exists
         final String url = getUrlForFindByRepoBranchCommit() + "repourl=" + URLEncoder.encode(repoUrl, UTF_8) + "&branch=" + URLEncoder.encode(branch, UTF_8) + "&commitid=" + URLEncoder.encode(commitHash, UTF_8);
         System.out.println("svc url : " + url);
+        
         WebResource webResource = client.resource(url);
+        
         boolean noContent = false;
         BinRepoBranchCommitDO binRepoBranchCommitDO1 = null;
+        
         try {
             binRepoBranchCommitDO1 = webResource.accept(MediaType.APPLICATION_JSON).get(BinRepoBranchCommitDO.class);
         } catch (UniformInterfaceException e) {
-            int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
-            System.out.println("Url HERE" + url + " Status Code HERE: " + statusCode);
-            noContent = (statusCode == 204);
+            
+        	int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
+            System.out.println(" Status Code HERE: " + statusCode);
+            
+            if( statusCode == 404){
+            	noContent = true;
+            }else if( statusCode == 204 ){
+            	noContent = true;
+            }
+            
         } catch (Exception e) { // Catch-all to deal with network problems etc.
             e.printStackTrace();
         }
@@ -503,7 +517,8 @@ public class BinaryRepository {
         Git binaryRepo = Git.open(binaryRepoDir);
 
         final ListBranchCommand listBranchCommand = binaryRepo.branchList();
-        System.out.println(listBranchCommand.getRepository().getFullBranch());
+        //System.out.println(listBranchCommand.getRepository().getFullBranch());
+        
         // get "status"
         final StatusCommand statusCommand = binaryRepo.status();
         Collection<String> filesToStage = GitUtils.getFilesToStage(statusCommand);
