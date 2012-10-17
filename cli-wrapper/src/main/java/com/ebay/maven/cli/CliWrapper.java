@@ -28,6 +28,7 @@ import org.apache.maven.model.Repository;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Calendar;
 import java.util.List;
 
 /**
@@ -54,11 +55,16 @@ public class CliWrapper {
 
 	public static void main( String[] args ) throws ParseException{
 		
-		//System.out.println("args " + args.length + StringUtils.join(args) );
+		long begin = Calendar.getInstance().getTimeInMillis();
+		
 		CliWrapper wrapper = new CliWrapper();
 		InputParams input = wrapper.processCliArguments(args);
 		
 		wrapper.process(input);
+		
+		long end = Calendar.getInstance().getTimeInMillis();
+		long diff = end - begin;
+		System.out.println("Time taken " + diff + " ms");
 	}
 	
 	public InputParams processCliArguments( String[] args ) throws ParseException{
