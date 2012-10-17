@@ -118,7 +118,7 @@ public class GitUtils {
 	
 	/**
 	 * extracts repository name from string of the format "repo.git".
-	 * @param repository
+	 * @param input
 	 * @return
 	 */
 	public static String getRepo(String input ){
@@ -208,6 +208,7 @@ public class GitUtils {
     public static void main(String[] args) throws Exception {
         System.out.println("MAIN" + GitUtils.existsInGit("binrepo-devex"));
         System.out.println("MAIN" + GitUtils.existsInGit("CreatedUsingGitHub-API-Client"));
+        System.out.println("MAIN Nambi" + GitUtils.existsInGit("maven-enhanced"));
     }
 
 

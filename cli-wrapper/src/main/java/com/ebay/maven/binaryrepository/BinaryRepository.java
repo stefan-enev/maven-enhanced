@@ -25,10 +25,7 @@ import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
 
 import javax.ws.rs.core.MediaType;
-import java.io.File;
-import java.io.FilenameFilter;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -46,8 +43,6 @@ public class BinaryRepository {
     
     private static Client client = Client.create();
 
-    public static final String SVC_BASE_URL = "http://stratus-fd12.stratus.dev.ebay.com:8080/"; // http://localhost:10000/services/repo
-    public static final String BINREPOSVC_FINDBY_REPOURL_BRANCH_COMMITID = "http://localhost:10000/services/repo/search/byrepourlbranchandcommitid/?";
     public static final String SVC_BASE = "services/repo";
     public static final String SVC_FINDBY_REPO_BRANCH_COMMITID = "search/byrepourlbranchandcommitid/?";
     public static final String UTF_8 = "UTF-8";
@@ -55,8 +50,7 @@ public class BinaryRepository {
 	public BinaryRepository(File root) throws IOException {
         if (root.canRead() && root.isDirectory()){
             this.root = root;
-
-			// get the repository name.
+            // get the repository name.
 			FileRepositoryBuilder repobuiler = new FileRepositoryBuilder();
 			this.sourceRepository = repobuiler.findGitDir(root).build();
 			
@@ -96,21 +90,17 @@ public class BinaryRepository {
 				result = true;
 			}
 		}
-		return result && isRepoPresentInGit();
-	}
-
-    public boolean isRepoPresentInGit() {
-        boolean b = false;
+		// return result && isRepoPresentInGit();
+        boolean remoteRepoCheck = false;
         try {
-            b = GitUtils.existsInGit(getRepositoryName());
-        } catch (IOException e) {
-            // TODO: Log it
+            remoteRepoCheck = isRemoteBinaryRepositoryAvailable();
+        } catch (GitException e) {
             e.printStackTrace();
         }
-        return b;
-    }
+        return result && remoteRepoCheck;
+	}
 
-	public boolean isRemoteBinaryRepositoryAvailable() throws GitException {
+    public boolean isRemoteBinaryRepositoryAvailable() throws GitException {
         boolean result = false;
 
 		String srcRepoUrl = getSourceRemoteUrl();
@@ -135,7 +125,7 @@ public class BinaryRepository {
 		return result;
 	}
 
-	public void createBinaryRepository() throws IOException, GitException{
+	public void createBinaryRepository() throws IOException, GitException {
         // check whether "binary repository" exists
 		if (isBinaryRepositoryAvailable()) throw new GitException("Repository already exists");
 
@@ -234,8 +224,7 @@ public class BinaryRepository {
 		config.setString("remote", "origin", "url", remoteUrl);
 		config.save();
 		
-		
-		// find the "localobr" folders and exclude them during copy
+        // find the "localobr" folders and exclude them during copy
 		List<String> excludes = new ArrayList<String>();
 		Collection<File> excludeFiles = FileUtil.findDirectoriesThatEndWith(sourceRepoFolder, "localobr");
 		for( File file: excludeFiles ){
@@ -294,7 +283,7 @@ public class BinaryRepository {
 		} catch (GitAPIException e) {
 			throw new GitException("unable to push", e);
 		}
-        // TODO: RGIROTI This is an untested POST. Check this out ASAP
+
         final String repoUrl = getSourceRemoteUrl();
         // branchName was computed above
         final org.eclipse.jgit.lib.Repository repo = new org.eclipse.jgit.storage.file.FileRepository(f);
@@ -303,8 +292,20 @@ public class BinaryRepository {
         final RevCommit commitRev = revWalk.parseCommit(resolve);
         final String commitHash = commitRev.getName();
 
+        Git git = Git.open(binaryRepoFolder);
+        final RevCommit binRepoResolveCommitRev;
+        try {
+            binRepoResolveCommitRev = git.log().call().iterator().next();
+        } catch (NoHeadException e) {
+            throw new GitException("No head found for repo", e);
+        } catch (GitAPIException e) {
+            throw new GitException("No head found for repo", e);
+        }
+        final String binRepoResolveCommitHash = binRepoResolveCommitRev.getName();
+        final String binRepoBranchName = git.getRepository().getBranch();
+
         System.out.println("Update Bin Repo Service with the new changes - POST new object to service");
-        final BinRepoBranchCommitDO binRepoBranchCommitDO = newInstance(repoUrl, branchname, commitHash);
+        final BinRepoBranchCommitDO binRepoBranchCommitDO = newInstance(repoUrl, branchname, commitHash, remoteUrl, binRepoBranchName, binRepoResolveCommitHash);
         final WebResource resource = client.resource(getUrlForPost());
         BinRepoBranchCommitDO postedDO = null;
 
@@ -456,11 +457,10 @@ public class BinaryRepository {
         final File sourceDir = srcRepoDir.getParentFile();
 
         final String sourceRepoFolder = srcRepoDir.getParentFile().getCanonicalPath();
-        System.out.println("SourceRepository = " + sourceRepoFolder);
 
         final File parent = srcRepoDir.getParentFile().getParentFile();
         final File binaryRepoDir = new File(parent, "." + srcRepoDir.getParentFile().getName());
-        System.out.println("BinaryRepository = " + binaryRepoDir.getCanonicalPath());
+        System.out.println("SourceRepository = " + sourceRepoFolder + "\nBinaryRepository = " + binaryRepoDir.getCanonicalPath());
 
         // 2. Get branch/commit hash for the source repo - the actual source code
         final org.eclipse.jgit.lib.Repository repository = new org.eclipse.jgit.storage.file.FileRepository(srcRepoDir);
@@ -470,11 +470,12 @@ public class BinaryRepository {
         final RevWalk revWalk = new RevWalk(repository);
         final ObjectId resolve = repository.resolve(Constants.HEAD);
         final RevCommit commit = revWalk.parseCommit(resolve);
-        String commitHash = commit.getName(); // Can pass this instead of just using HEAD always
+        String commitHash = commit.getName();
         System.out.println("CommitHash:" + commitHash + "\tMessage:" + commit.getFullMessage());
 
         // 3. Call the BinRepo service and check if a corresponding BinRepo entry exists
-        final String url = getUrlForFindByRepoBranchCommit() + "repourl=" + URLEncoder.encode(repoUrl, UTF_8) + "&branch=" + URLEncoder.encode(branch, UTF_8) + "&commitid=" + URLEncoder.encode(commitHash, UTF_8);
+        final String url = getUrlForFindByRepoBranchCommit() + "repourl=" + URLEncoder.encode(repoUrl, UTF_8) + "&branch=" +
+                URLEncoder.encode(branch, UTF_8) + "&commitid=" + URLEncoder.encode(commitHash, UTF_8);
         System.out.println("svc url : " + url);
         WebResource webResource = client.resource(url);
         boolean noContent = false;
@@ -492,9 +493,11 @@ public class BinaryRepository {
 
         // 4. If not copy all the target folders from the source repo to the binary repo - root to root copy of artifacts
         if (noContent) {
-            File src = new File(sourceDir, "target");
+            System.out.println("Source Directory:'" + sourceDir.getCanonicalPath() + "' Destination Directory:'" + binaryRepoDir.getCanonicalPath() + "'");
+            /*File src = new File(sourceDir, "target");
             File dest = new File(binaryRepoDir, "target");
-            copyDirectory(src, dest);
+            copyDirectory(src, dest);*/
+            copyDirectory2(sourceDir, binaryRepoDir);
         }
 
         // 5. Call git status to get the delta (Use StatusCommand and refine it)
@@ -529,9 +532,10 @@ public class BinaryRepository {
             String msg = "Saving Repo:%s Branch:%s CommitHash:%s Time:%s";
             final String formattedMsg = String.format(msg, repoUrl, branch, commitHash, new Date().toString());
             commitCommand.setMessage(formattedMsg);
+            String commitHashBinRepo = null;
             try {
                 final RevCommit call = commitCommand.call();
-                commitHash = call.getName();
+                commitHashBinRepo = call.getName();      // Got this
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -539,6 +543,7 @@ public class BinaryRepository {
             // push to origin now
             final PushCommand push = binaryRepo.push();
             final String remote = push.getRemote();
+            final String remoteBranch = push.getRepository().getBranch();
             System.out.println("Remote to push to:'" + remote + "'");
             try {
                 final Iterable<PushResult> call = push.call();
@@ -546,9 +551,14 @@ public class BinaryRepository {
                 e.printStackTrace();
             }
 
+
+            // Calculate the remote url for binary repository
+            String binRepoUrl = calculateBinaryRepositoryUrl();  // Got this
+
             // 7. Call the BinRepo service and create a new entity for this change - repoUrl, branch, and commit
             System.out.println("Update Bin Repo Service with the new changes - POST new object to service");
-            final BinRepoBranchCommitDO binRepoBranchCommitDO = newInstance(repoUrl, branch, commitHash);
+            // final BinRepoBranchCommitDO binRepoBranchCommitDO = newInstance(repoUrl, branch, commitHash);
+            final BinRepoBranchCommitDO binRepoBranchCommitDO = newInstance(repoUrl, branch, commitHash, binRepoUrl, remoteBranch, commitHashBinRepo);
             webResource = client.resource(getUrlForPost());
 
             BinRepoBranchCommitDO postedDO = null;
@@ -573,6 +583,18 @@ public class BinaryRepository {
         return binRepoBranchCommitDO;
     }
 
+    private BinRepoBranchCommitDO newInstance(final String repoUrl, final String branch, final String commitHash,
+                                              final String binRepoUrl, final String binRepoBranch, final String binRepoCommitHash) throws UnsupportedEncodingException {
+        BinRepoBranchCommitDO binRepoBranchCommitDO = new BinRepoBranchCommitDO();
+        binRepoBranchCommitDO.setRepoUrl(URLEncoder.encode(repoUrl, UTF_8));
+        binRepoBranchCommitDO.setBranch(URLEncoder.encode(branch, UTF_8));
+        binRepoBranchCommitDO.setCommitId(URLEncoder.encode(commitHash, UTF_8));
+        binRepoBranchCommitDO.setBinRepoUrl(URLEncoder.encode(binRepoUrl, UTF_8));
+        binRepoBranchCommitDO.setBinRepoBranch(URLEncoder.encode(binRepoBranch, UTF_8));
+        binRepoBranchCommitDO.setBinRepoCommitId(URLEncoder.encode(binRepoCommitHash, UTF_8));
+        return binRepoBranchCommitDO;
+    }
+
     // Copies all files under srcDir to dstDir.
     private void copyDirectory(final File srcDir, final File dstDir) throws IOException {
         if (srcDir.isDirectory()) {
@@ -582,6 +604,45 @@ public class BinaryRepository {
             for (String child : children) {
                 copyDirectory(new File(srcDir, child), new File(dstDir, child));
             }
+
+        } else {
+            Files.copy(srcDir, dstDir);
+        }
+    }
+
+    private FileFilter pathFilter = new FileFilter() {
+        public boolean accept(File dir) {
+            boolean temp = false;
+            try {
+                temp = dir.getCanonicalPath().contains("target");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return temp;
+        }
+    };
+
+    // Copies all files under srcDir to dstDir.
+    private void copyDirectory2(final File srcDir, final File dstDir) throws IOException {
+        if (srcDir.isDirectory()) {
+            if (!dstDir.exists()) dstDir.mkdir(); // Create dstDir if required
+
+            final File[] files = srcDir.listFiles();
+            for (File file : files) {
+                copyDirectory3(file, new File(dstDir, file.getName()));
+            }
+        }
+    }
+
+    private void copyDirectory3(final File srcDir, final File dstDir) throws IOException {
+        if (srcDir.isDirectory()) {
+            if (!dstDir.exists()) dstDir.mkdir(); // Create dstDir if required
+
+            final File[] files = srcDir.listFiles(pathFilter);
+            for (File file : files) {
+                copyDirectory3(file, new File(dstDir, file.getName()));
+            }
+
 
         } else {
             Files.copy(srcDir, dstDir);

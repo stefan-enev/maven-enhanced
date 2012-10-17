@@ -80,7 +80,7 @@ public class CliWrapper {
 			createOrUpdateBinaryRepository( input);
 		}
 		if( input.getMode().equals(RunMode.SETUP) ){
-			setupProject();
+			setupProject(input);
 		}
 	}
 	
@@ -96,12 +96,13 @@ public class CliWrapper {
 			
             // TODO: RGIROTI Remove next line at some point - refactor this to a test case somewhere
             // root = new File("D:\\dev\\devex\\binrepo-devex");
+            root = new File("D:\\dev\\rgiroti_search_raptor\\search_raptor");
 			BinaryRepository repository = new BinaryRepository(root);
 			if( input.getMapSvcUrl() != null ){
 				repository.setBaseServiceUrl(input.getMapSvcUrl() );
 			}
 			
-			if( repository.isBinaryRepositoryAvailable() ){
+			if (repository.isBinaryRepositoryAvailable()) {
                 repository.updateBinaryRepository();
 
 			} else {
@@ -122,15 +123,16 @@ public class CliWrapper {
 		}
 	}
 	
-	public void setupProject(){
+	public void setupProject(final InputParams input ) {
 		// TODO: download dependencies
 		
 		// read the source project
 		File root = new File( System.getProperty("user.dir"));
         // TODO: RGIROTI Remove next line at some point - refactor this to a test case somewhere
-        // root = new File("D:\\dev\\devex\\binrepo-devex");
+        root = new File("D:\\dev\\rgiroti_search_raptor\\search_raptor");
 		try {
 			BinaryRepository repository = new BinaryRepository(root);
+            repository.setBaseServiceUrl(input.getMapSvcUrl());
 			
 			if( repository.isBinaryRepositoryAvailable() ){
 				
