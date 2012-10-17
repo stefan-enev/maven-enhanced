@@ -54,7 +54,7 @@ public class CliWrapper {
 
 	public static void main( String[] args ) throws ParseException{
 		
-		System.out.println("args " + args.length + StringUtils.join(args) );
+		//System.out.println("args " + args.length + StringUtils.join(args) );
 		CliWrapper wrapper = new CliWrapper();
 		InputParams input = wrapper.processCliArguments(args);
 		

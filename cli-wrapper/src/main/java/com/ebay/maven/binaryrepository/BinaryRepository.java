@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 public class BinaryRepository {
 
@@ -455,62 +456,103 @@ public class BinaryRepository {
 		cloneCmd.setDirectory( binaryRepoFolder );
 		cloneCmd.setCloneAllBranches(true);
 
+		Git binrepository = null;
+		
 		try {
-
-			Git binaryRepository = cloneCmd.call();
-
-			CheckoutCommand checkoutCmd = binaryRepository.checkout();
-            checkoutCmd.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.SET_UPSTREAM );
-			checkoutCmd.setName("origin/" + branchName);
-			// TODO: checkout is not happening properly for a branch. fix it.
-			Ref branch = checkoutCmd.call();
-
-			CheckoutResult result = checkoutCmd.getResult();
-			//System.out.println( result.getStatus());
 			
-			// TODO: find out whether Binary is upto-date with the sources
-
-			//       call the MapSvc to find it out.
-            final org.eclipse.jgit.lib.Repository repository = new org.eclipse.jgit.storage.file.FileRepository(f);
-            final RevWalk revWalk = new RevWalk(repository);
-            final ObjectId resolve = repository.resolve(Constants.HEAD);
-            final RevCommit commit = revWalk.parseCommit(resolve);
-            final String commitHash = commit.getName();
-            final String url = getUrlForFindByRepoBranchCommit() + "repourl=" + URLEncoder.encode(getSourceRemoteUrl(), UTF_8) +
-                    "&branch=" + URLEncoder.encode(branchName, UTF_8) + "&commitid=" + URLEncoder.encode(commitHash, UTF_8);
-
-            final WebResource webResource = client.resource(url);
-            boolean noContent = false;
-            BinRepoBranchCommitDO binRepoBranchCommitDO = null;
-            try {
-                binRepoBranchCommitDO = webResource.accept(MediaType.APPLICATION_JSON_TYPE).get(BinRepoBranchCommitDO.class);
-            } catch (UniformInterfaceException e) {
-                int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
-                noContent = (statusCode == 204);
-            } catch (Exception e) { // catch-all in case there are network problems
-                e.printStackTrace();
-            }
-            // No matching entry found in mapping service
-            // TODO: RGIROTI Talk to Nambi and find out what we want to do in this case
-            if (noContent) {
-
-            } else {
-                // if it matches copy the .class files from binaryrepository to source-repository
-                if (binRepoBranchCommitDO != null &&
-                        binRepoBranchCommitDO.getRepoUrl().equalsIgnoreCase(getSourceRemoteUrl()) &&
-                        binRepoBranchCommitDO.getBranch().equalsIgnoreCase(branchName) &&
-                        binRepoBranchCommitDO.getCommitId().equalsIgnoreCase(commitHash)) {
-                    FileUtil.copyBinaryFolders(binaryRepoFolder, sourceDir, ".git");
-                }
-            }
+			System.out.println("cloning repository " + giturl );
+			binrepository = cloneCmd.call();
+            
         } catch (InvalidRemoteException e) {
 			throw new GitException("unable to clone " + giturl, e);
 		} catch (TransportException e) {
 			throw new GitException("unable to clone " + giturl, e);
 		} catch (GitAPIException e) {
 			throw new GitException("unable to clone " + giturl, e);
+		}
+		
+		RevWalk rev = new RevWalk(binrepository.getRepository());
+		Map<String,Ref> refs = binrepository.getRepository().getAllRefs();
+		
+		CheckoutCommand checkoutCmd = binrepository.checkout();
+        checkoutCmd.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK );
+		checkoutCmd.setName( "origin/"+ branchName);
+		
+		// TODO: checkout is not happening properly for a branch. fix it.
+		System.out.println("checking out branch " + branchName );
+		
+		try {
+			Ref branch = checkoutCmd.call();
+			
+		} catch (RefAlreadyExistsException e) {
+			throw new GitException("unable to checkout branch " + branchName, e);
+		} catch (RefNotFoundException e) {
+			throw new GitException("unable to checkout branch " + branchName, e);
+		} catch (InvalidRefNameException e) {
+			throw new GitException("unable to checkout branch " + branchName, e);
+		} catch (CheckoutConflictException e) {
+			throw new GitException("unable to checkout branch " + branchName, e);
+		} catch (GitAPIException e) {
+			throw new GitException("unable to checkout branch " + branchName, e);
+		}
+
+		CheckoutResult result = checkoutCmd.getResult();
+		
+		if( result.getStatus().equals(CheckoutResult.OK_RESULT)){
+			System.out.println("checkout is OK");
+		}else{
+			// TODO: handle the error.
+		}
+		
+		//System.out.println( result.getStatus());
+		
+		// TODO: find out whether Binary is upto-date with the sources
+
+		/*
+		// call the MapSvc to find it out.
+        final org.eclipse.jgit.lib.Repository repository = new org.eclipse.jgit.storage.file.FileRepository(f);
+        final RevWalk revWalk = new RevWalk(repository);
+        final ObjectId resolve = repository.resolve(Constants.HEAD);
+        final RevCommit commit = revWalk.parseCommit(resolve);
+        final String commitHash = commit.getName();
+        final String url = getUrlForFindByRepoBranchCommit() + "repourl=" + URLEncoder.encode(getSourceRemoteUrl(), UTF_8) +
+                "&branch=" + URLEncoder.encode(branchName, UTF_8) + "&commitid=" + URLEncoder.encode(commitHash, UTF_8);
+
+        final WebResource webResource = client.resource(url);
+        boolean noContent = false;
+        
+        BinRepoBranchCommitDO binRepoBranchCommitDO = null;
+        try {
+        	System.out.println("calling mapsvc ");
+            binRepoBranchCommitDO = webResource.accept(MediaType.APPLICATION_JSON_TYPE).get(BinRepoBranchCommitDO.class);
+        } catch (UniformInterfaceException e) {
+            int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
+            noContent = (statusCode == 204);
+        } catch (Exception e) { // catch-all in case there are network problems
+            e.printStackTrace();
+        }
+        
+        
+        // No matching entry found in mapping service
+        // TODO: RGIROTI Talk to Nambi and find out what we want to do in this case
+        if (noContent) {
+
+        } else {
+            // if it matches copy the .class files from binaryrepository to source-repository
+            if (binRepoBranchCommitDO != null &&
+                    binRepoBranchCommitDO.getRepoUrl().equalsIgnoreCase(getSourceRemoteUrl()) &&
+                    binRepoBranchCommitDO.getBranch().equalsIgnoreCase(branchName) &&
+                    binRepoBranchCommitDO.getCommitId().equalsIgnoreCase(commitHash)) {
+                
+            }
+        }
+        */
+		
+		try {
+			FileUtil.copyBinaryFolders(binaryRepoFolder, sourceDir, ".git");
 		} catch (IOException e) {
-			throw new GitException("unable to clone " + giturl, e);
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
     }
 
