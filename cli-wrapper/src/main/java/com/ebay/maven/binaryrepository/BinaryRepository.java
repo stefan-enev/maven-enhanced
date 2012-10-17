@@ -444,14 +444,6 @@ public class BinaryRepository {
 		File parent = f.getParentFile().getParentFile();
 		File binaryRepoFolder = new File( parent , ( "." + sourceRepoFolderName) );
 
-		// read the branch from "source" repository
-		String branchName = "master";
-		try {
-			branchName = sourceRepository.getBranch();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
 		// clone the binary repository
 		CloneCommand cloneCmd = Git.cloneRepository();
 		cloneCmd.setURI( giturl );
@@ -473,42 +465,55 @@ public class BinaryRepository {
 			throw new GitException("unable to clone " + giturl, e);
 		}
 		
-		// TODO: checkout is not happening properly for a branch. fix it.
-		CheckoutCommand checkoutCmd = binrepository.checkout();
-		checkoutCmd.setName( "origin/" + branchName);
-		checkoutCmd.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK );
-		checkoutCmd.setStartPoint( "origin/" + branchName );
-
-		System.out.println("checking out branch " + branchName );
-		
+		// read the branch from "source" repository
+		String branchName = "master";
 		try {
+			branchName = sourceRepository.getBranch();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		// Checkout the "branch" if it is not equal to "master"
+		if( !branchName.toLowerCase().equals("master") ){
 			
-			//Ref branch = branchCmd.call();
-			Ref ref = checkoutCmd.call();
-			System.out.println("checkout is complete" );
-			if( ref != null ){
-				//System.out.println("ref " + ref.getName() );
+			CheckoutCommand checkoutCmd = binrepository.checkout();
+			checkoutCmd.setCreateBranch(true);
+			checkoutCmd.setName( branchName);
+			checkoutCmd.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK );
+			checkoutCmd.setStartPoint( "origin/" + branchName );
+
+			System.out.println("checking out branch " + branchName );
+			
+			try {
+				
+				//Ref branch = branchCmd.call();
+				Ref ref = checkoutCmd.call();
+				System.out.println("checkout is complete" );
+				if( ref != null ){
+					//System.out.println("ref " + ref.getName() );
+				}
+				
+			} catch (RefAlreadyExistsException e) {
+				throw new GitException("unable to checkout branch " + branchName, e);
+			} catch (RefNotFoundException e) {
+				throw new GitException("unable to checkout branch " + branchName, e);
+			} catch (InvalidRefNameException e) {
+				throw new GitException("unable to checkout branch " + branchName, e);
+			} catch (CheckoutConflictException e) {
+				throw new GitException("unable to checkout branch " + branchName, e);
+			} catch (GitAPIException e) {
+				throw new GitException("unable to checkout branch " + branchName, e);
 			}
+
+			CheckoutResult result = checkoutCmd.getResult();
 			
-		} catch (RefAlreadyExistsException e) {
-			throw new GitException("unable to checkout branch " + branchName, e);
-		} catch (RefNotFoundException e) {
-			throw new GitException("unable to checkout branch " + branchName, e);
-		} catch (InvalidRefNameException e) {
-			throw new GitException("unable to checkout branch " + branchName, e);
-		} catch (CheckoutConflictException e) {
-			throw new GitException("unable to checkout branch " + branchName, e);
-		} catch (GitAPIException e) {
-			throw new GitException("unable to checkout branch " + branchName, e);
+			if( result.getStatus().equals(CheckoutResult.OK_RESULT)){
+				System.out.println("checkout is OK");
+			}else{
+				// TODO: handle the error.
+			}
 		}
 
-		CheckoutResult result = checkoutCmd.getResult();
-		
-		if( result.getStatus().equals(CheckoutResult.OK_RESULT)){
-			System.out.println("checkout is OK");
-		}else{
-			// TODO: handle the error.
-		}
 		
 		//System.out.println( result.getStatus());
 		
