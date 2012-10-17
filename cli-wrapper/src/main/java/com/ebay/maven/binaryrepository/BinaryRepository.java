@@ -9,7 +9,6 @@ import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.UniformInterfaceException;
 import com.sun.jersey.api.client.WebResource;
 import org.eclipse.jgit.api.*;
-import org.eclipse.jgit.api.CreateBranchCommand.SetupUpstreamMode;
 import org.eclipse.jgit.api.errors.*;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
@@ -32,7 +31,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 
 public class BinaryRepository {
 
@@ -151,10 +149,10 @@ public class BinaryRepository {
 		// create binary repository folder
 		FileUtils.mkdir(binaryRepoFolder, true);
 
-		// initialize "git" repository
+        // initialize "git" repository
 		InitCommand initCmd = Git.init();
 		initCmd.setDirectory(binaryRepoFolder);
-		Git binaryRepo=null;
+		Git binaryRepo = null;
 		try {
 			System.out.println("initializing bare repository");
 			binaryRepo = initCmd.call();
@@ -162,7 +160,7 @@ public class BinaryRepository {
 			throw new GitException("unable to initialize repository", e);
 		}
 
-		System.out.println("adding readme.md file");
+        System.out.println("adding readme.md file");
         createReadMeFile(binaryRepoFolder);
 
         // get "status"
@@ -189,29 +187,29 @@ public class BinaryRepository {
 		}
 
 
-		
-		// Calculate the remote url for binary repository
-		String remoteUrl = calculateBinaryRepositoryUrl();
-		
-		// TODO: check whether the remote exists, if not create it, else fail
-		GitHub github = new GitHubClient().getGithub();
-		GHOrganization githubOrg = github.getOrganization("Binary");
-		GHRepository repository = githubOrg.getRepository( GitUtils.getRepositoryName(remoteUrl) );
-		
-		if (repository == null ) {
+
+        // Calculate the remote url for binary repository
+        String remoteUrl = calculateBinaryRepositoryUrl();
+
+        // TODO: check whether the remote exists, if not create it, else fail
+        GitHub github = new GitHubClient().getGithub();
+        GHOrganization githubOrg = github.getOrganization("Binary");
+        GHRepository repository = githubOrg.getRepository( GitUtils.getRepositoryName(remoteUrl) );
+
+        if (repository == null ) {
 			System.out.println("creating remote repository : " + remoteUrl );
-			GHRepository repo = githubOrg.createRepository(GitUtils.getRepositoryName(remoteUrl), "Binary repository", "https://github.scm.corp.ebay.com", "Owners", true);
-		} else {
-			// fail, it shouldn't come here
-		}
-		
-		// add "remote" repository
-		StoredConfig config = binaryRepo.getRepository().getConfig();
-		config.setString("remote", "origin", "url", remoteUrl);
+            GHRepository repo = githubOrg.createRepository(GitUtils.getRepositoryName(remoteUrl), "Binary repository", "https://github.scm.corp.ebay.com", "Owners", true);
+        } else {
+            // fail, it shouldn't come here
+        }
+
+        // add "remote" repository
+        StoredConfig config = binaryRepo.getRepository().getConfig();
+        config.setString("remote", "origin", "url", remoteUrl);
 		System.out.println("adding remote origin " + remoteUrl );
-		config.save();
-		
-		// get "status"
+        config.save();
+
+        // get "status"
 		StatusCommand stat = binaryRepo.status();
 		Collection<String> filesToAdd = GitUtils.getFilesToStage(stat);
 
@@ -289,27 +287,8 @@ public class BinaryRepository {
 				throw new GitException("unable to create a branch", e);
 			}
 		}
-		
-		// Calculate the remote url for binary repository
-		String remoteUrl = calculateBinaryRepositoryUrl();
-		
-		// TODO: check whether the remote exists, if not create it, else fail
-		GitHub github = new GitHubClient().getGithub();
-		GHOrganization githubOrg = github.getOrganization("Binary");
-		GHRepository repository = githubOrg.getRepository( GitUtils.getRepositoryName(remoteUrl) );
-		
-		if (repository == null ) {
-			GHRepository repo = githubOrg.createRepository(GitUtils.getRepositoryName(remoteUrl), "Binary repository", "https://github.scm.corp.ebay.com", "Owners", true);
-		} else {
-			// fail, it shouldn't come here
-		}
-		
-		// add "remote" repository
-		StoredConfig config = binaryRepo.getRepository().getConfig();
-		config.setString("remote", "origin", "url", remoteUrl);
-		config.save();
-		
-        // find the "localobr" folders and exclude them during copy
+
+		// find the "localobr" folders and exclude them during copy
 		List<String> excludes = new ArrayList<String>();
 		Collection<File> excludeFiles = FileUtil.findDirectoriesThatEndWith(sourceRepoFolder, "localobr");
 		for( File file: excludeFiles ){
