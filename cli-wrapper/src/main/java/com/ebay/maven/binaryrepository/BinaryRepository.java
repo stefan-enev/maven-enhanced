@@ -332,6 +332,7 @@ public class BinaryRepository {
 		System.out.println("commiting the files");
 		CommitCommand commit1 = binaryRepo.commit();
 		commit1.setMessage("saving the files");
+		
 		try {
 			commit1.call();
 		} catch (NoHeadException e) {

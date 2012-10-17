@@ -83,7 +83,7 @@
     <repositories>
     	<repository>
     		<id>kohsuke.snapshots</id>
-    		<url>http://r2d2:7077/nexus/content/repositories/github.java/</url>
+    		<url>http://r2d2:7077/nexus/content/repositories/r2d2.snapshot/</url>
     		<snapshots>
     			<enabled>true</enabled>
     		</snapshots>
