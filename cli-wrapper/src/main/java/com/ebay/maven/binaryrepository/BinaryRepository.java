@@ -9,6 +9,7 @@ import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.UniformInterfaceException;
 import com.sun.jersey.api.client.WebResource;
 import org.eclipse.jgit.api.*;
+import org.eclipse.jgit.api.CreateBranchCommand.SetupUpstreamMode;
 import org.eclipse.jgit.api.errors.*;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
@@ -471,18 +472,22 @@ public class BinaryRepository {
 			throw new GitException("unable to clone " + giturl, e);
 		}
 		
-		RevWalk rev = new RevWalk(binrepository.getRepository());
-		Map<String,Ref> refs = binrepository.getRepository().getAllRefs();
-		
-		CheckoutCommand checkoutCmd = binrepository.checkout();
-        checkoutCmd.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK );
-		checkoutCmd.setName( "origin/"+ branchName);
-		
 		// TODO: checkout is not happening properly for a branch. fix it.
+		CheckoutCommand checkoutCmd = binrepository.checkout();
+		checkoutCmd.setName( "origin/" + branchName);
+		checkoutCmd.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK );
+		checkoutCmd.setStartPoint( "origin/" + branchName );
+
 		System.out.println("checking out branch " + branchName );
 		
 		try {
-			Ref branch = checkoutCmd.call();
+			
+			//Ref branch = branchCmd.call();
+			Ref ref = checkoutCmd.call();
+			System.out.println("checkout is complete" );
+			if( ref != null ){
+				//System.out.println("ref " + ref.getName() );
+			}
 			
 		} catch (RefAlreadyExistsException e) {
 			throw new GitException("unable to checkout branch " + branchName, e);

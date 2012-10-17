@@ -140,6 +140,7 @@ public class CliWrapper {
 				
 			}else if( repository.isRemoteBinaryRepositoryAvailable() ) {
 				repository.cloneBinaryRepository();
+				System.out.println("setup is complete");
 			}else{
 				// TODO: anything we can do?
 				System.out.println("Binary repository not available. exiting...");
