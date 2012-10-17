@@ -200,4 +200,30 @@ val headCommit: RevCommit = walk.parseCommit(head)
 
 
     }
+
+    @Test
+    public void testRemote() throws Exception {
+
+
+        File binaryRepoFolder = new File("D:\\dev\\rgiroti_search_raptor\\.search_raptor");
+        Git git = Git.open(binaryRepoFolder);
+        final Iterable<RevCommit> revCommits = git.log().call();
+        for (RevCommit revCommit : revCommits) {
+            System.out.println(revCommit.getName() + revCommit.getFullMessage() + revCommit.getCommitTime());
+        }
+
+
+
+
+        final org.eclipse.jgit.lib.Repository binRepo = new org.eclipse.jgit.storage.file.FileRepository(binaryRepoFolder);
+        final RevWalk binRepoRevWalk = new RevWalk(binRepo);
+
+
+        final ObjectId binRepoResolve = binRepo.resolve(Constants.HEAD);
+        final RevCommit binRepoResolveCommitRev = git.log().call().iterator().next();
+        final String binRepoResolveCommitHash = binRepoResolveCommitRev.getName();
+
+
+        final String binRepoBranchname = git.getRepository().getBranch();
+    }
 }

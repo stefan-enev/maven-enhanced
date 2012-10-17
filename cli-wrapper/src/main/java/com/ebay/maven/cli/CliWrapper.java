@@ -87,7 +87,7 @@ public class CliWrapper {
 			createOrUpdateBinaryRepository( input);
 		}
 		if( input.getMode().equals(RunMode.SETUP) ){
-			setupProject();
+			setupProject(input);
 		}
 	}
 	
@@ -108,7 +108,7 @@ public class CliWrapper {
 				repository.setBaseServiceUrl(input.getMapSvcUrl() );
 			}
 			
-			if( repository.isBinaryRepositoryAvailable() ){
+			if (repository.isBinaryRepositoryAvailable()) {
                 repository.updateBinaryRepository();
 
 			} else {
@@ -132,7 +132,7 @@ public class CliWrapper {
 		}
 	}
 	
-	public void setupProject(){
+	public void setupProject(final InputParams input ) {
 		// TODO: download dependencies
 		
 		// read the source project
@@ -141,6 +141,7 @@ public class CliWrapper {
         // root = new File("D:\\dev\\devex\\binrepo-devex");
 		try {
 			BinaryRepository repository = new BinaryRepository(root);
+            repository.setBaseServiceUrl(input.getMapSvcUrl());
 			
 			if( repository.isBinaryRepositoryAvailable() ){
 				
