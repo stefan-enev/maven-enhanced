@@ -154,7 +154,7 @@ public class GitUtils {
 			tobeAdded.addAll(status.getUntracked());
 			
 			for( String file : tobeAdded){
-				System.out.println(file);
+				//System.out.println(file);
 			}
 			
 			issues.addAll(status.getConflicting());

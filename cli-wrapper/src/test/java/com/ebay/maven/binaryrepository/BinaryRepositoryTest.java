@@ -47,6 +47,9 @@ public class BinaryRepositoryTest {
 		} catch (GitException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} catch (MapServiceException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 	

@@ -18,6 +18,7 @@ package com.ebay.maven.cli;
 
 import com.ebay.maven.binaryrepository.BinaryRepository;
 import com.ebay.maven.binaryrepository.GitException;
+import com.ebay.maven.binaryrepository.MapServiceException;
 import com.ebay.maven.utils.PomUtils;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang.StringUtils;
@@ -27,12 +28,13 @@ import org.apache.maven.model.Repository;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Calendar;
 import java.util.List;
 
 /**
  * <code>CliWrapper</code> prepares the workspace before maven kicks in.
  * <ol>
- * 	<li>Downloads all dependencencies and pre-fill the local repository before maven starts.</li>
+ * 	<li>Downloads all dependencies and pre-fill the local repository before maven starts.</li>
  * 	<li>If the project has a <I>Compiled Source Repository</I>, it gets the class files into target/classes folder.
  * </ol>
  *
@@ -53,11 +55,16 @@ public class CliWrapper {
 
 	public static void main( String[] args ) throws ParseException{
 		
-		System.out.println("args " + args.length + StringUtils.join(args) );
+		long begin = Calendar.getInstance().getTimeInMillis();
+		
 		CliWrapper wrapper = new CliWrapper();
 		InputParams input = wrapper.processCliArguments(args);
 		
 		wrapper.process(input);
+		
+		long end = Calendar.getInstance().getTimeInMillis();
+		long diff = end - begin;
+		System.out.println("Time taken " + diff + " ms");
 	}
 	
 	public InputParams processCliArguments( String[] args ) throws ParseException{
@@ -96,7 +103,6 @@ public class CliWrapper {
 			
             // TODO: RGIROTI Remove next line at some point - refactor this to a test case somewhere
             // root = new File("D:\\dev\\devex\\binrepo-devex");
-            root = new File("D:\\dev\\rgiroti_search_raptor\\search_raptor");
 			BinaryRepository repository = new BinaryRepository(root);
 			if( input.getMapSvcUrl() != null ){
 				repository.setBaseServiceUrl(input.getMapSvcUrl() );
@@ -120,6 +126,9 @@ public class CliWrapper {
 		} catch (GitException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} catch (MapServiceException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 	
@@ -129,7 +138,7 @@ public class CliWrapper {
 		// read the source project
 		File root = new File( System.getProperty("user.dir"));
         // TODO: RGIROTI Remove next line at some point - refactor this to a test case somewhere
-        root = new File("D:\\dev\\rgiroti_search_raptor\\search_raptor");
+        // root = new File("D:\\dev\\devex\\binrepo-devex");
 		try {
 			BinaryRepository repository = new BinaryRepository(root);
             repository.setBaseServiceUrl(input.getMapSvcUrl());
@@ -138,6 +147,7 @@ public class CliWrapper {
 				
 			}else if( repository.isRemoteBinaryRepositoryAvailable() ) {
 				repository.cloneBinaryRepository();
+				System.out.println("setup is complete");
 			}else{
 				// TODO: anything we can do?
 				System.out.println("Binary repository not available. exiting...");
