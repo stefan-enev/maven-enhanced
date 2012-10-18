@@ -1,6 +1,6 @@
 package com.ebay.utils;
 
-import com.ebay.git.utils.GitUtils;
+import com.google.common.io.Files;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
 
@@ -203,8 +203,70 @@ public class FileUtil {
 	}
 
 
+    // Filters out all files/directories which have target in the canonical path name and excludes any files/dirs that belong
+    // under localobr
+    private static java.io.FileFilter targetDirFilter = new java.io.FileFilter() {
+        public boolean accept(File dir) {
+            boolean temp = false;
+            try {
+                temp = dir.getCanonicalPath().contains("target") && !dir.getCanonicalPath().contains("localobr");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return temp;
+        }
+    };
 
+    /**
+     * Copies all binaries - read class files - from srcDir (should be top-level project directory) to dstDir (binary
+     * equivalent of top-level project directory named .project usually)
+     *
+     * @param srcDir        the source directory
+     * @param dstDir        the destination directory
+     * @throws IOException  if any errors were encountered in copying
+     */
+    public static void copyBinaries(final File srcDir, final File dstDir) throws IOException {
+        if (srcDir.isDirectory()) {
+            if (!dstDir.exists()) dstDir.mkdir(); // Create dstDir if required
 
+            final File[] files = srcDir.listFiles();
+            for (File file : files) {
+                if (file.isDirectory())
+                    copyDirectory(file, new File(dstDir, file.getName()), targetDirFilter);
+            }
+        }
 
+    }
+
+    /**
+     * Copies everything from srcDir to dstDir using the passed in filter. If filter is null, does not do any
+     * filtering in copying of files
+     *
+     * @param srcDir        the source directory
+     * @param dstDir        the destination directory
+     * @param fileFilter    the file filter to use here
+     *
+     * @throws IOException  if any errors were encountered in copying
+     */
+    public static void copyDirectory(final File srcDir, final File dstDir, final java.io.FileFilter fileFilter) throws IOException {
+        if (srcDir.isDirectory()) {
+            if (!dstDir.exists()) dstDir.mkdir();
+
+            File[] files = null;
+            if (fileFilter != null) {
+                files = srcDir.listFiles(fileFilter);
+
+            } else {
+                files = srcDir.listFiles();
+            }
+
+            for (File file : files) {
+                copyDirectory(file, new File(dstDir, file.getName()), targetDirFilter);
+            }
+
+        } else {
+            Files.copy(srcDir, dstDir);
+        }
+    }
 
 }

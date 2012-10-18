@@ -4,7 +4,6 @@ import com.ebay.beans.BinRepoBranchCommitDO;
 import com.ebay.git.utils.GitUtils;
 import com.ebay.github.client.GitHubClient;
 import com.ebay.utils.FileUtil;
-import com.google.common.io.Files;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.UniformInterfaceException;
 import com.sun.jersey.api.client.WebResource;
@@ -25,7 +24,10 @@ import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
 
 import javax.ws.rs.core.MediaType;
-import java.io.*;
+import java.io.File;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -608,17 +610,13 @@ public class BinaryRepository {
         try {
             binRepoBranchCommitDO1 = webResource.accept(MediaType.APPLICATION_JSON).get(BinRepoBranchCommitDO.class);
         } catch (UniformInterfaceException e) {
-            
-        	int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
+            int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
             System.out.println("Service Status Code : " + statusCode);
-            
-            
-            if( statusCode == 404){
+            if (statusCode == 404) {
             	noContent = true;
-            }else if( statusCode == 204 ){ // FIXME: does the service return 204
+            } else if (statusCode == 204) { // 204 is for NO CONTENT
             	noContent = true;
             }
-            
         } catch (Exception e) { // Catch-all to deal with network problems etc.
             e.printStackTrace();
         }
@@ -630,7 +628,7 @@ public class BinaryRepository {
             /*File src = new File(sourceDir, "target");
             File dest = new File(binaryRepoDir, "target");
             copyDirectory(src, dest);*/
-            copyDirectory2(sourceDir, binaryRepoDir);
+            FileUtil.copyBinaries(sourceDir, binaryRepoDir);
         }
 
         // 5. Call git status to get the delta (Use StatusCommand and refine it)
@@ -685,7 +683,6 @@ public class BinaryRepository {
                 e.printStackTrace();
             }
 
-
             // Calculate the remote url for binary repository
             String binRepoUrl = calculateBinaryRepositoryUrl();  // Got this
 
@@ -706,18 +703,6 @@ public class BinaryRepository {
         }
     }
 
-    // FIXME : the URL and commit hash is same on both sides
-    private BinRepoBranchCommitDO newInstance(final String repoUrl, final String branch, final String commitHash) throws UnsupportedEncodingException {
-        BinRepoBranchCommitDO binRepoBranchCommitDO = new BinRepoBranchCommitDO();
-        binRepoBranchCommitDO.setRepoUrl(URLEncoder.encode(repoUrl, UTF_8));
-        binRepoBranchCommitDO.setBranch(URLEncoder.encode(branch, UTF_8));
-        binRepoBranchCommitDO.setCommitId(URLEncoder.encode(commitHash, UTF_8));
-        binRepoBranchCommitDO.setBinRepoUrl(URLEncoder.encode("BIN_" + repoUrl, UTF_8));
-        binRepoBranchCommitDO.setBinRepoBranch(URLEncoder.encode("BIN_" + branch, UTF_8));
-        binRepoBranchCommitDO.setBinRepoCommitId(URLEncoder.encode("BIN_" + commitHash, UTF_8));
-        return binRepoBranchCommitDO;
-    }
-
     private BinRepoBranchCommitDO newInstance(final String repoUrl, final String branch, final String commitHash,
                                               final String binRepoUrl, final String binRepoBranch, final String binRepoCommitHash) throws UnsupportedEncodingException {
         BinRepoBranchCommitDO binRepoBranchCommitDO = new BinRepoBranchCommitDO();
@@ -728,60 +713,6 @@ public class BinaryRepository {
         binRepoBranchCommitDO.setBinRepoBranch(URLEncoder.encode(binRepoBranch, UTF_8));
         binRepoBranchCommitDO.setBinRepoCommitId(URLEncoder.encode(binRepoCommitHash, UTF_8));
         return binRepoBranchCommitDO;
-    }
-
-    // Copies all files under srcDir to dstDir.
-    private void copyDirectory(final File srcDir, final File dstDir) throws IOException {
-        if (srcDir.isDirectory()) {
-            if (!dstDir.exists()) dstDir.mkdir(); // Create dstDir if required
-
-            String[] children = srcDir.list();
-            for (String child : children) {
-                copyDirectory(new File(srcDir, child), new File(dstDir, child));
-            }
-
-        } else {
-            Files.copy(srcDir, dstDir);
-        }
-    }
-
-    private FileFilter pathFilter = new FileFilter() {
-        public boolean accept(File dir) {
-            boolean temp = false;
-            try {
-                temp = dir.getCanonicalPath().contains("target");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return temp;
-        }
-    };
-
-    // Copies all files under srcDir to dstDir.
-    private void copyDirectory2(final File srcDir, final File dstDir) throws IOException {
-        if (srcDir.isDirectory()) {
-            if (!dstDir.exists()) dstDir.mkdir(); // Create dstDir if required
-
-            final File[] files = srcDir.listFiles();
-            for (File file : files) {
-                copyDirectory3(file, new File(dstDir, file.getName()));
-            }
-        }
-    }
-
-    private void copyDirectory3(final File srcDir, final File dstDir) throws IOException {
-        if (srcDir.isDirectory()) {
-            if (!dstDir.exists()) dstDir.mkdir(); // Create dstDir if required
-
-            final File[] files = srcDir.listFiles(pathFilter);
-            for (File file : files) {
-                copyDirectory3(file, new File(dstDir, file.getName()));
-            }
-
-
-        } else {
-            Files.copy(srcDir, dstDir);
-        }
     }
 
     public String getUrlForFindByRepoBranchCommit() throws UnsupportedEncodingException{
@@ -806,11 +737,11 @@ public class BinaryRepository {
     public String calculateBinaryRepositoryUrl(){
     	String remoteUrl=null;
     	String srcUrl = getSourceRemoteUrl();
-    	if( srcUrl.contains("scm.corp.ebay.com")){
+    	if (srcUrl.contains("scm.corp.ebay.com")) {
     		String org = GitUtils.getOrgName(srcUrl);
     		String repoName = GitUtils.getRepositoryName(srcUrl);
     		remoteUrl = "git@github.scm.corp.ebay.com:Binary/" +  calculateBinaryRepositoryName(org, repoName) + ".git";
-    	}else{
+    	} else {
     		
     	}
     	return remoteUrl;
