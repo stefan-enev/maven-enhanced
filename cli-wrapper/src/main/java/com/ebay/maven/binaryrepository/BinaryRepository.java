@@ -43,7 +43,7 @@ public class BinaryRepository {
     
     private static Client client = Client.create();
 
-    public static final String SVC_BASE_URL = "http://stratus-fd12.stratus.dev.ebay.com:8080"; 
+    public static final String SVC_BASE_URL = "http://stratus-fd12.stratus.dev.ebay.com:8080";
     public static final String SVC_BASE = "services/repo";
     public static final String SVC_FINDBY_REPO_BRANCH_COMMITID = "search/byrepourlbranchandcommitid/?";
     public static final String UTF_8 = "UTF-8";
@@ -206,7 +206,7 @@ public class BinaryRepository {
         // add "remote" repository
         StoredConfig config = binaryRepo.getRepository().getConfig();
         config.setString("remote", "origin", "url", remoteUrl);
-		System.out.println("adding remote origin " + remoteUrl );
+		System.out.println("adding remote origin " + remoteUrl);
         config.save();
 
         // get "status"
@@ -378,7 +378,8 @@ public class BinaryRepository {
         
         BinRepoBranchCommitDO postedDO = null;
         try {
-            postedDO = resource.accept(MediaType.APPLICATION_JSON).post(BinRepoBranchCommitDO.class, binRepoBranchCommitDO);
+            postedDO = resource.accept(MediaType.APPLICATION_XML).post(BinRepoBranchCommitDO.class, binRepoBranchCommitDO);
+            System.out.println("Posted Object = " + postedDO.toString());
         } catch (UniformInterfaceException e) {
             int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
             System.out.println("status code: " + statusCode);
