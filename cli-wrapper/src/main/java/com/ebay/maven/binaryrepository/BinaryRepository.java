@@ -7,6 +7,7 @@ import com.ebay.utils.FileUtil;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.UniformInterfaceException;
 import com.sun.jersey.api.client.WebResource;
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.jgit.api.*;
 import org.eclipse.jgit.api.errors.*;
 import org.eclipse.jgit.lib.Constants;
@@ -17,7 +18,6 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
-import org.eclipse.jgit.transport.PushResult;
 import org.eclipse.jgit.util.FileUtils;
 import org.kohsuke.github.GHOrganization;
 import org.kohsuke.github.GHRepository;
@@ -131,7 +131,7 @@ public class BinaryRepository {
 		return result;
 	}
 
-	public void createBinaryRepository() throws IOException, GitException, MapServiceException{
+	public void createBinaryRepository() throws IOException, GitException, MapServiceException {
         // check whether "binary repository" exists
 		if (isBinaryRepositoryAvailable()) throw new GitException("Repository already exists");
 
@@ -187,8 +187,6 @@ public class BinaryRepository {
 				throw new GitException("Unable to add or commit", e);
 			}
 		}
-
-
 
         // Calculate the remote url for binary repository
         String remoteUrl = calculateBinaryRepositoryUrl();
@@ -451,7 +449,7 @@ public class BinaryRepository {
 		// clone the binary repository
 		CloneCommand cloneCmd = Git.cloneRepository();
 		cloneCmd.setURI( giturl );
-		cloneCmd.setDirectory( binaryRepoFolder );
+		cloneCmd.setDirectory(binaryRepoFolder);
 		cloneCmd.setCloneAllBranches(true);
 
 		Git binrepository = null;
@@ -489,8 +487,7 @@ public class BinaryRepository {
 			System.out.println("checking out branch " + branchName );
 			
 			try {
-				
-				//Ref branch = branchCmd.call();
+                //Ref branch = branchCmd.call();
 				Ref ref = checkoutCmd.call();
 				System.out.println("checkout is complete" );
 				if( ref != null ){
@@ -518,10 +515,8 @@ public class BinaryRepository {
 			}
 		}
 
-		
 		//System.out.println( result.getStatus());
-		
-		// TODO: find out whether Binary is upto-date with the sources
+        // TODO: find out whether Binary is upto-date with the sources
 
 		/*
 		// call the MapSvc to find it out.
@@ -571,7 +566,7 @@ public class BinaryRepository {
 		}
     }
 
-    public void updateBinaryRepository() throws IOException, GitException {
+    public void updateBinaryRepository() throws IOException, GitException, MapServiceException {
         // 1. Check if repository exists remotely git@github.scm.corp.ebay.com/Binary/Repo_Binary.git
         // find the name of the "source repository"
         final String repoUrl = getSourceRemoteUrl();
@@ -589,7 +584,6 @@ public class BinaryRepository {
         // 2. Get branch/commit hash for the source repo - the actual source code
         final org.eclipse.jgit.lib.Repository repository = new org.eclipse.jgit.storage.file.FileRepository(srcRepoDir);
         final String branch = repository.getBranch();
-        
 
         final RevWalk revWalk = new RevWalk(repository);
         final ObjectId resolve = repository.resolve(Constants.HEAD);
@@ -612,49 +606,55 @@ public class BinaryRepository {
         } catch (UniformInterfaceException e) {
             int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
             System.out.println("Service Status Code : " + statusCode);
-            if (statusCode == 404) {
-            	noContent = true;
-            } else if (statusCode == 204) { // 204 is for NO CONTENT
-            	noContent = true;
-            }
+            noContent = (statusCode == 204 || statusCode == 404);     // HTTP 204 is NO CONTENT which is ok
         } catch (Exception e) { // Catch-all to deal with network problems etc.
             e.printStackTrace();
         }
-        //System.out.println(binRepoBranchCommitDO1 != null ? binRepoBranchCommitDO1.toString() : "Resource not found on server");
+        // System.out.println(binRepoBranchCommitDO1 != null ? binRepoBranchCommitDO1.toString() : "Resource not found on server");
 
         // 4. If not copy all the target folders from the source repo to the binary repo - root to root copy of artifacts
         if (noContent) {
             System.out.println("Source Directory:'" + sourceDir.getCanonicalPath() + "' Destination Directory:'" + binaryRepoDir.getCanonicalPath() + "'");
-            /*File src = new File(sourceDir, "target");
-            File dest = new File(binaryRepoDir, "target");
-            copyDirectory(src, dest);*/
             FileUtil.copyBinaries(sourceDir, binaryRepoDir);
         }
 
         // 5. Call git status to get the delta (Use StatusCommand and refine it)
-        Git srcRepo = Git.open(srcRepoDir);
-        Git binaryRepo = Git.open(binaryRepoDir);
+        Git srcRepo;
+        Git binaryRepo;
+        try {
+            srcRepo = Git.open(srcRepoDir);
+        } catch (IOException e) {
+            throw new GitException("Unable to open repository" + srcRepoDir, e);
+        }
+        try {
+            binaryRepo = Git.open(binaryRepoDir);
+        } catch (IOException e) {
+            throw new GitException("Unable to open repository" + binaryRepoDir, e);
+        }
 
         final ListBranchCommand listBranchCommand = binaryRepo.branchList();
         //System.out.println(listBranchCommand.getRepository().getFullBranch());
         
         // get "status"
         final StatusCommand statusCommand = binaryRepo.status();
+        // TODO: RGIROTI Ask Nambi if we should actually filter this to only add .class files and nothing else
         Collection<String> filesToStage = GitUtils.getFilesToStage(statusCommand);
-        for (String file : filesToStage) {
+        /*for (String file : filesToStage) {
             System.out.println("File to be added:" + file);
-        }
+        }*/
 
         // add files to "staging" - if there is nothing to stage none of the other operations make any sense at all
         if (filesToStage.size() > 0) {
-            AddCommand addCmd = binaryRepo.add();
+            final AddCommand addCmd = binaryRepo.add();
             for (String file : filesToStage) {
                 addCmd.addFilepattern(file);
             }
+            final String[] filesArr = filesToStage.toArray(new String[filesToStage.size()]);
+            final String files = StringUtils.join(filesArr, ",");
             try {
                 addCmd.call();
             } catch (Exception e) {
-                e.printStackTrace();
+                throw new GitException("Unable to add files to repository" + files, e);
             }
 
             // 6. Commit the changes to local and call push after that (use JGit API for this)
@@ -664,12 +664,12 @@ public class BinaryRepository {
             String msg = "Saving Repo:%s Branch:%s CommitHash:%s Time:%s";
             final String formattedMsg = String.format(msg, repoUrl, branch, commitHash, new Date().toString());
             commitCommand.setMessage(formattedMsg);
-            String commitHashBinRepo = null;
+            String commitHashBinRepo;
             try {
                 final RevCommit call = commitCommand.call();
-                commitHashBinRepo = call.getName();      // Got this
+                commitHashBinRepo = call.getName();
             } catch (Exception e) {
-                e.printStackTrace();
+                throw new GitException("Unable to read commit hash from commit command", e);
             }
 
             // push to origin now
@@ -678,28 +678,28 @@ public class BinaryRepository {
             final String remoteBranch = push.getRepository().getBranch();
             System.out.println("Remote to push to:'" + remote + "'");
             try {
-                final Iterable<PushResult> call = push.call();
+                push.call();
             } catch (Exception e) {
-                e.printStackTrace();
+                throw new GitException("Unable to push to remote", e);
             }
 
             // Calculate the remote url for binary repository
-            String binRepoUrl = calculateBinaryRepositoryUrl();  // Got this
+            String binRepoUrl = calculateBinaryRepositoryUrl();
 
             // 7. Call the BinRepo service and create a new entity for this change - repoUrl, branch, and commit
             System.out.println("Update Bin Repo Service with the new changes - POST new object to service");
-            // final BinRepoBranchCommitDO binRepoBranchCommitDO = newInstance(repoUrl, branch, commitHash);
             final BinRepoBranchCommitDO binRepoBranchCommitDO = newInstance(repoUrl, branch, commitHash, binRepoUrl, remoteBranch, commitHashBinRepo);
             webResource = client.resource(getUrlForPost());
 
             BinRepoBranchCommitDO postedDO = null;
             try {
-                postedDO = webResource.accept(MediaType.APPLICATION_JSON).post(BinRepoBranchCommitDO.class, binRepoBranchCommitDO);
+                postedDO = webResource.accept(MediaType.APPLICATION_XML).post(BinRepoBranchCommitDO.class, binRepoBranchCommitDO);
             } catch (UniformInterfaceException e) {
                 int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
                 System.out.println("status code: " + statusCode);
+                throw new MapServiceException("Unable to register the commit details in update binrepo", e);
             }
-            System.out.println(postedDO != null ? postedDO.toString() : "Put was null");
+            System.out.println(postedDO != null ? postedDO.toString() : "Post failed");
         }
     }
 
