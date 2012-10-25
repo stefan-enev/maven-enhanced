@@ -7,7 +7,10 @@ import com.ebay.utils.FileUtil;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.UniformInterfaceException;
 import com.sun.jersey.api.client.WebResource;
+import com.sun.jersey.api.client.config.ClientConfig;
+import com.sun.jersey.api.client.config.DefaultClientConfig;
 import org.apache.commons.lang.StringUtils;
+import org.codehaus.jackson.jaxrs.JacksonJsonProvider;
 import org.eclipse.jgit.api.*;
 import org.eclipse.jgit.api.errors.*;
 import org.eclipse.jgit.lib.Constants;
@@ -43,7 +46,13 @@ public class BinaryRepository {
     private String baseServiceUrl = null;
     private GitHubClient ghClient = null;
     
-    private static Client client = Client.create();
+    private static Client client;
+
+    static {
+        ClientConfig config = new DefaultClientConfig();
+        config.getClasses().add(JacksonJsonProvider.class);
+        client = Client.create(config);
+    }
 
     public static final String SVC_BASE_URL = "http://stratus-fd12.stratus.dev.ebay.com:8080";
     public static final String SVC_BASE = "services/repo";
@@ -606,7 +615,7 @@ public class BinaryRepository {
         } catch (UniformInterfaceException e) {
             int statusCode = e.getResponse().getClientResponseStatus().getStatusCode();
             System.out.println("Service Status Code : " + statusCode);
-            noContent = (statusCode == 204 || statusCode == 404);     // HTTP 204 is NO CONTENT which is ok
+            noContent = (statusCode == 204 || statusCode == 404);     // HTTP 204 is NO CONTENT which is ok for us
         } catch (Exception e) { // Catch-all to deal with network problems etc.
             e.printStackTrace();
         }
@@ -619,22 +628,13 @@ public class BinaryRepository {
         }
 
         // 5. Call git status to get the delta (Use StatusCommand and refine it)
-        Git srcRepo;
         Git binaryRepo;
-        try {
-            srcRepo = Git.open(srcRepoDir);
-        } catch (IOException e) {
-            throw new GitException("Unable to open repository" + srcRepoDir, e);
-        }
         try {
             binaryRepo = Git.open(binaryRepoDir);
         } catch (IOException e) {
             throw new GitException("Unable to open repository" + binaryRepoDir, e);
         }
 
-        final ListBranchCommand listBranchCommand = binaryRepo.branchList();
-        //System.out.println(listBranchCommand.getRepository().getFullBranch());
-        
         // get "status"
         final StatusCommand statusCommand = binaryRepo.status();
         // TODO: RGIROTI Ask Nambi if we should actually filter this to only add .class files and nothing else
@@ -737,7 +737,7 @@ public class BinaryRepository {
     public String calculateBinaryRepositoryUrl(){
     	String remoteUrl=null;
     	String srcUrl = getSourceRemoteUrl();
-    	if (srcUrl.contains("scm.corp.ebay.com")) {
+    	if (srcUrl.contains("scm.corp.ebay.com") ) {
     		String org = GitUtils.getOrgName(srcUrl);
     		String repoName = GitUtils.getRepositoryName(srcUrl);
     		remoteUrl = "git@github.scm.corp.ebay.com:Binary/" +  calculateBinaryRepositoryName(org, repoName) + ".git";

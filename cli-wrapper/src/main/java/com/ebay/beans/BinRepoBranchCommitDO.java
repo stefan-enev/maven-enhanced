@@ -1,8 +1,13 @@
 package com.ebay.beans;
 
+import com.ebay.beans.adapters.TimestampAdapter;
 import com.google.gson.Gson;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
+import java.sql.Timestamp;
 
 /**
  * Created with IntelliJ IDEA.
@@ -12,6 +17,7 @@ import javax.xml.bind.annotation.XmlRootElement;
  * To change this template use File | Settings | File Templates.
  */
 @XmlRootElement
+@XmlAccessorType(XmlAccessType.FIELD)
 public class BinRepoBranchCommitDO {
 
     private long id;
@@ -22,15 +28,23 @@ public class BinRepoBranchCommitDO {
     private String binRepoBranch;
     private String binRepoCommitId;
 
+    /*@XmlElement(name = "timestamp", required = true)
+    @XmlJavaTypeAdapter(TimestampAdapter.class)
+    private Timestamp creationDate;*/
+
+    private long creationDate;
+
     public BinRepoBranchCommitDO() {}
 
-    public BinRepoBranchCommitDO(String repoUrl, String branch, String commitId, String binRepoUrl, String binRepoBranch, String binRepoCommitId) {
+    public BinRepoBranchCommitDO(String repoUrl, String branch, String commitId, String binRepoUrl,
+                                 String binRepoBranch, String binRepoCommitId, long creationDate) {
         this.repoUrl = repoUrl;
         this.branch = branch;
         this.commitId = commitId;
         this.binRepoUrl = binRepoUrl;
         this.binRepoBranch = binRepoBranch;
         this.binRepoCommitId = binRepoCommitId;
+        this.creationDate = creationDate;
     }
 
     public long getId() {
@@ -89,6 +103,18 @@ public class BinRepoBranchCommitDO {
         this.binRepoCommitId = binRepoCommitId;
     }
 
+    public long getCreationDate() {
+        return creationDate;
+    }
+
+    public void setCreationDate(long creationDate) {
+        this.creationDate = creationDate;
+    }
+
+    public Timestamp getCreationTimestamp() {
+        return new Timestamp(creationDate);
+    }
+
     @Override
     public String toString() {
         return "BinRepoBranchCommitDO{" +
@@ -99,12 +125,7 @@ public class BinRepoBranchCommitDO {
                 ", binRepoUrl='" + binRepoUrl + '\'' +
                 ", binRepoBranch='" + binRepoBranch + '\'' +
                 ", binRepoCommitId='" + binRepoCommitId + '\'' +
+                ", creationDate=" + creationDate +
                 '}';
-    }
-
-    public String toJson(){
-        Gson gson = new Gson();
-        String jsonStr = gson.toJson(this);
-        return jsonStr;
     }
 }

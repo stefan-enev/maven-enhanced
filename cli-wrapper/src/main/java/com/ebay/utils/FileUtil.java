@@ -205,6 +205,7 @@ public class FileUtil {
 
     // Filters out all files/directories which have target in the canonical path name and excludes any files/dirs that belong
     // under localobr
+    // TODO: RGIROTI Talk to Nambi about filtering out more patterns from here - for instance anything under target/bundles or matching target/.*.jar
     private static java.io.FileFilter targetDirFilter = new java.io.FileFilter() {
         public boolean accept(File dir) {
             boolean temp = false;
@@ -265,7 +266,10 @@ public class FileUtil {
             }
 
         } else {
-            Files.copy(srcDir, dstDir);
+            if (srcDir.lastModified() > dstDir.lastModified()) {
+                System.out.println("Copying source:'" + srcDir.getAbsolutePath() + "' to destination:'" + dstDir.getAbsolutePath() + "'");
+                Files.copy(srcDir, dstDir);
+            }
         }
     }
 
