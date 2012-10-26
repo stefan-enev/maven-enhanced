@@ -1,6 +1,5 @@
 package com.ebay.beans;
 
-import com.ebay.beans.adapters.TimestampAdapter;
 import com.google.gson.Gson;
 
 import javax.xml.bind.annotation.XmlAccessType;
