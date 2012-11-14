@@ -16,20 +16,20 @@
  */
 package com.ebay.maven.cli;
 
-import com.ebay.maven.binaryrepository.BinaryRepository;
-import com.ebay.maven.binaryrepository.GitException;
-import com.ebay.maven.binaryrepository.MapServiceException;
-import com.ebay.maven.utils.PomUtils;
-import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang.StringUtils;
-import org.apache.maven.model.Dependency;
-import org.apache.maven.model.Model;
-import org.apache.maven.model.Repository;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.List;
+
+import org.apache.commons.cli.ParseException;
+import org.apache.maven.model.Dependency;
+import org.apache.maven.model.Model;
+import org.apache.maven.model.Repository;
+
+import com.ebay.maven.binaryrepository.BinaryRepository;
+import com.ebay.maven.binaryrepository.GitException;
+import com.ebay.maven.binaryrepository.MapServiceException;
+import com.ebay.maven.utils.PomUtils;
 
 /**
  * <code>CliWrapper</code> prepares the workspace before maven kicks in.
@@ -49,7 +49,6 @@ import java.util.List;
  * 
  * 
  * @author nambi sankaran
- *
  */
 public class CliWrapper {
 
@@ -102,7 +101,6 @@ public class CliWrapper {
 			// System.out.println(root.getName());
 			
             // TODO: RGIROTI Remove next line at some point - refactor this to a test case somewhere
-            // root = new File("D:\\dev\\devex\\binrepo-devex");
 			BinaryRepository repository = new BinaryRepository(root);
 			if( input.getMapSvcUrl() != null ){
 				repository.setBaseServiceUrl(input.getMapSvcUrl() );
@@ -165,6 +163,7 @@ public class CliWrapper {
 	}
 
 	public void downloadDependencies(){
+		
 		// read the pom.xml
 		// TODO: get the pom.xml path from -f argument
 		Model model = PomUtils.readModel("pom.xml");
@@ -175,6 +174,7 @@ public class CliWrapper {
 		// collect the dependencies
 		List<Dependency> dependencies = model.getDependencies();
 		
+		System.out.println(repositories.toString() + dependencies.toString() );
 		// TODO: read the settings.xml to collect the repositories
 		
 		// construct the JSON request 
