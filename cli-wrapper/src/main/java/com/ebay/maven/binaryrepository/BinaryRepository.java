@@ -89,7 +89,8 @@ public class BinaryRepository {
 	public boolean isBinaryRepositoryAvailable(){
         boolean result = false;
         // get the name of the source repository
-		String repositoryName = getRepositoryName();
+		//String repositoryName = getRepositoryName();
+        
         // find where ".git" folder is found
 		File f = sourceRepository.getDirectory();
         // repository foldername
@@ -145,7 +146,7 @@ public class BinaryRepository {
 		if (isBinaryRepositoryAvailable()) throw new GitException("Repository already exists");
 
 		// find the name of the "source repository"
-		String sourceRepoName = getRepositoryName();
+		//String sourceRepoName = getRepositoryName();
 
         // find where ".git" folder is found
 		File f = sourceRepository.getDirectory();
@@ -206,8 +207,16 @@ public class BinaryRepository {
         GHRepository repository = githubOrg.getRepository( GitUtils.getRepositoryName(remoteUrl) );
 
         if (repository == null ) {
-			System.out.println("creating remote repository : " + remoteUrl );
-            GHRepository repo = githubOrg.createRepository(GitUtils.getRepositoryName(remoteUrl), "Binary repository", "https://github.scm.corp.ebay.com", "Owners", true);
+			
+        	System.out.println("creating remote repository : " + remoteUrl );
+            GHRepository repo = githubOrg.createRepository(GitUtils.getRepositoryName(remoteUrl), 
+            												"Binary repository", 
+            												"https://github.scm.corp.ebay.com", 
+            												"Owners", 
+            												true);
+            
+            System.out.println( repo.getUrl() + " created successfully ");
+            
         } else {
             // fail, it shouldn't come here
         }
@@ -575,12 +584,16 @@ public class BinaryRepository {
 		}
     }
 
-    public void updateBinaryRepository() throws IOException, GitException, MapServiceException {
+    public void updateBinaryRepository() 
+    		throws IOException, GitException, MapServiceException {
+    	
         // 1. Check if repository exists remotely git@github.scm.corp.ebay.com/Binary/Repo_Binary.git
         // find the name of the "source repository"
         final String repoUrl = getSourceRemoteUrl();
 
-        // find where ".git" folder is found  // SourceRepository = D:\dev\devex\binrepo-devex // BinaryRepository = D:\dev\devex\.binrepo-devex
+        // find where ".git" folder is found  
+        // SourceRepository = D:\dev\devex\binrepo-devex 
+        // BinaryRepository = D:\dev\devex\.binrepo-devex
         final File srcRepoDir = sourceRepository.getDirectory();
         final File sourceDir = srcRepoDir.getParentFile();
 
@@ -619,7 +632,8 @@ public class BinaryRepository {
         } catch (Exception e) { // Catch-all to deal with network problems etc.
             e.printStackTrace();
         }
-        // System.out.println(binRepoBranchCommitDO1 != null ? binRepoBranchCommitDO1.toString() : "Resource not found on server");
+        
+        System.out.println(binRepoBranchCommitDO1 != null ? binRepoBranchCommitDO1.toString() : "Resource not found on server");
 
         // 4. If not copy all the target folders from the source repo to the binary repo - root to root copy of artifacts
         if (noContent) {

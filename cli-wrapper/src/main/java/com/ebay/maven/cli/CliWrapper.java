@@ -45,7 +45,7 @@ import com.ebay.maven.utils.PomUtils;
  * <H3>Using compiled repository</H3>
  * large projects may have 1000s of java classes, it may take a long time to build in a laptop.
  * So, lightening will download the pre-compiled classes for the project and fill 'target' folder.
- * This will enable the developer to get start coding in seconds. 
+ * This will enable the developer to start coding in seconds. 
  * 
  * 
  * @author nambi sankaran
@@ -98,9 +98,7 @@ public class CliWrapper {
 		File root = new File( System.getProperty("user.dir"));
 		try {
            
-			// System.out.println(root.getName());
 			
-            // TODO: RGIROTI Remove next line at some point - refactor this to a test case somewhere
 			BinaryRepository repository = new BinaryRepository(root);
 			if( input.getMapSvcUrl() != null ){
 				repository.setBaseServiceUrl(input.getMapSvcUrl() );
