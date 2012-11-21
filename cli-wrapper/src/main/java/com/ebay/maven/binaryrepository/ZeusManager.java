@@ -60,6 +60,7 @@ public class ZeusManager {
     public static final String UTF_8 = "UTF-8";
 
 	public ZeusManager(File root) throws IOException {
+		
         if (root.canRead() && root.isDirectory()){
             this.root = root;
             this.baseServiceUrl = SVC_BASE_URL;
@@ -86,7 +87,43 @@ public class ZeusManager {
 		return remoteUrl;
 	}
 
+	/*
+	 * Pull latest from 'source' and 'binary' repository.
+	 */
+	public void gitpull() throws GitException{
+		
+		// do 'pull' on 'source'
+		Git srcgit = Git.wrap(sourceRepository);
+		Git bingit = Git.wrap(binaryRepository);
+		
+		try {
+			
+			srcgit.pull().call();
+			bingit.pull().call();
+			
+		} catch (WrongRepositoryStateException e) {
+			throw new GitException(e);
+		} catch (InvalidConfigurationException e) {
+			throw new GitException(e);
+		} catch (DetachedHeadException e) {
+			throw new GitException(e);
+		} catch (InvalidRemoteException e) {
+			throw new GitException(e);
+		} catch (CanceledException e) {
+			throw new GitException(e);
+		} catch (RefNotFoundException e) {
+			throw new GitException(e);
+		} catch (NoHeadException e) {
+			throw new GitException(e);
+		} catch (TransportException e) {
+			throw new GitException(e);
+		} catch (GitAPIException e) {
+			throw new GitException(e);
+		}
+	}
+	
 	public boolean isBinaryRepositoryAvailable(){
+		
         boolean result = false;
         // get the name of the source repository
 		//String repositoryName = getRepositoryName();
@@ -113,6 +150,7 @@ public class ZeusManager {
         } catch (GitException e) {
             e.printStackTrace();
         }
+        
         return result && remoteRepoCheck;
 	}
 

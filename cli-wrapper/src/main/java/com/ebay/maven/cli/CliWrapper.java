@@ -98,14 +98,15 @@ public class CliWrapper {
 		File root = new File( System.getProperty("user.dir"));
 		try {
 			
-			ZeusManager repository = new ZeusManager(root);
+			ZeusManager zmanager = new ZeusManager(root);
 			if( input.getMapSvcUrl() != null ){
-				repository.setBaseServiceUrl(input.getMapSvcUrl() );
+				zmanager.setBaseServiceUrl(input.getMapSvcUrl() );
 			}
 			
-			if (repository.isBinaryRepositoryAvailable()) {
+			if (zmanager.isBinaryRepositoryAvailable()) {
 				
 				// get the latest by "git pull" on "source" and "binary"
+				zmanager.gitpull();
 				
 				// get 'source' branch/commit_id and check whether 'binary' is available for this branch/commit_id
 				
@@ -114,14 +115,14 @@ public class CliWrapper {
 				// checkout the 'branch/commit_id' for which update needs to be built
 				
 				// update binary repo
-                repository.updateBinaryRepository();
+                zmanager.updateBinaryRepository();
 
 			} else {
-				if (repository.isRemoteBinaryRepositoryAvailable()) {
+				if (zmanager.isRemoteBinaryRepositoryAvailable()) {
 					// IN this case, setup must be run before.
 					System.out.println("Remote binary repository is already available, but not cloned. Please run -s option");
 				} else {
-					repository.createBinaryRepository();
+					zmanager.createBinaryRepository();
 				}                
 			}
 			
