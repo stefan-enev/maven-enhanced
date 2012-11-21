@@ -37,7 +37,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
-public class BinaryRepository {
+public class ZeusManager {
 
     private File root;
     private File destination;
@@ -59,7 +59,7 @@ public class BinaryRepository {
     public static final String SVC_FINDBY_REPO_BRANCH_COMMITID = "search/byrepourlbranchandcommitid/?";
     public static final String UTF_8 = "UTF-8";
 
-	public BinaryRepository(File root) throws IOException {
+	public ZeusManager(File root) throws IOException {
         if (root.canRead() && root.isDirectory()){
             this.root = root;
             this.baseServiceUrl = SVC_BASE_URL;

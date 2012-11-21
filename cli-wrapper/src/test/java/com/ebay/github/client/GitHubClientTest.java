@@ -68,7 +68,7 @@ public class GitHubClientTest {
             }
 
             GHBranch test2 = branches.get("test2");
-            // test2.get
+            test2.getRoot();
 
         }
 
@@ -92,10 +92,10 @@ val headCommit: RevCommit = walk.parseCommit(head)
     // 2. Get branch/commit hash for the source repo - the actual source code
     @Test
     public void existsIn() throws IOException {
-        final String repo = "binrepo-devex";
+        //final String repo = "binrepo-devex";
         //  final String repo = "search_raptor_binary";
-        String githubUrl = "https://github.scm.corp.ebay.com/api/v3";
-        String accessToken = "1cf7d9792235b8592eda18bd7dcc2de37f99b3bc";
+        //String githubUrl = "https://github.scm.corp.ebay.com/api/v3";
+        //String accessToken = "1cf7d9792235b8592eda18bd7dcc2de37f99b3bc";
 
         final String path = "D:\\dev\\devex\\binrepo-devex\\.git";
 
@@ -115,7 +115,7 @@ val headCommit: RevCommit = walk.parseCommit(head)
         System.out.println(commitHash +  "\t" + commit.getFullMessage());
 
 
-        RefDatabase refDatabase = repository.getRefDatabase();
+        //RefDatabase refDatabase = repository.getRefDatabase();
 
 
 
@@ -126,8 +126,8 @@ val headCommit: RevCommit = walk.parseCommit(head)
     public void existsIn2() throws IOException {
         final String repo = "binrepo-devex";
         //  final String repo = "search_raptor_binary";
-        String githubUrl = "https://github.scm.corp.ebay.com/api/v3";
-        String accessToken = "1cf7d9792235b8592eda18bd7dcc2de37f99b3bc";
+        //String githubUrl = "https://github.scm.corp.ebay.com/api/v3";
+        //String accessToken = "1cf7d9792235b8592eda18bd7dcc2de37f99b3bc";
 
         final String path = "D:\\dev\\devex\\.binrepo-devex\\.git";
 
@@ -215,15 +215,15 @@ val headCommit: RevCommit = walk.parseCommit(head)
 
 
 
-        final org.eclipse.jgit.lib.Repository binRepo = new org.eclipse.jgit.storage.file.FileRepository(binaryRepoFolder);
-        final RevWalk binRepoRevWalk = new RevWalk(binRepo);
+        //final org.eclipse.jgit.lib.Repository binRepo = new org.eclipse.jgit.storage.file.FileRepository(binaryRepoFolder);
+        //final RevWalk binRepoRevWalk = new RevWalk(binRepo);
 
 
-        final ObjectId binRepoResolve = binRepo.resolve(Constants.HEAD);
-        final RevCommit binRepoResolveCommitRev = git.log().call().iterator().next();
-        final String binRepoResolveCommitHash = binRepoResolveCommitRev.getName();
+        //final ObjectId binRepoResolve = binRepo.resolve(Constants.HEAD);
+        //final RevCommit binRepoResolveCommitRev = git.log().call().iterator().next();
+        //final String binRepoResolveCommitHash = binRepoResolveCommitRev.getName();
 
 
-        final String binRepoBranchname = git.getRepository().getBranch();
+        //final String binRepoBranchname = git.getRepository().getBranch();
     }
 }

@@ -153,9 +153,9 @@ public class GitUtils {
 			tobeAdded.addAll(status.getRemoved());
 			tobeAdded.addAll(status.getUntracked());
 			
-			for( String file : tobeAdded){
-				//System.out.println(file);
-			}
+			/*for( String file : tobeAdded){
+				System.out.println(file);
+			}*/
 			
 			issues.addAll(status.getConflicting());
 			issues.addAll(status.getMissing());

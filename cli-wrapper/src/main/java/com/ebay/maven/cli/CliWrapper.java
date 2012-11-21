@@ -26,7 +26,7 @@ import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Repository;
 
-import com.ebay.maven.binaryrepository.BinaryRepository;
+import com.ebay.maven.binaryrepository.ZeusManager;
 import com.ebay.maven.binaryrepository.GitException;
 import com.ebay.maven.binaryrepository.MapServiceException;
 import com.ebay.maven.utils.PomUtils;
@@ -97,14 +97,23 @@ public class CliWrapper {
 		// assume the current directory the "root" of the project
 		File root = new File( System.getProperty("user.dir"));
 		try {
-           
 			
-			BinaryRepository repository = new BinaryRepository(root);
+			ZeusManager repository = new ZeusManager(root);
 			if( input.getMapSvcUrl() != null ){
 				repository.setBaseServiceUrl(input.getMapSvcUrl() );
 			}
 			
 			if (repository.isBinaryRepositoryAvailable()) {
+				
+				// get the latest by "git pull" on "source" and "binary"
+				
+				// get 'source' branch/commit_id and check whether 'binary' is available for this branch/commit_id
+				
+				// if not available, recursively check whether it is available for any 'previous' commit id
+				
+				// checkout the 'branch/commit_id' for which update needs to be built
+				
+				// update binary repo
                 repository.updateBinaryRepository();
 
 			} else {
@@ -136,7 +145,7 @@ public class CliWrapper {
         // TODO: RGIROTI Remove next line at some point - refactor this to a test case somewhere
         // root = new File("D:\\dev\\devex\\binrepo-devex");
 		try {
-			BinaryRepository repository = new BinaryRepository(root);
+			ZeusManager repository = new ZeusManager(root);
             repository.setBaseServiceUrl(input.getMapSvcUrl());
 			
 			if( repository.isBinaryRepositoryAvailable() ){
