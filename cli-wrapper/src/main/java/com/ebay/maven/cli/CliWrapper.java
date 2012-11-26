@@ -105,17 +105,21 @@ public class CliWrapper {
 			
 			if (zmanager.isBinaryRepositoryAvailable()) {
 				
-				// get the latest by "git pull" on "source" and "binary"
-				zmanager.gitpull();
+				while( true ){
 				
-				// get 'source' branch/commit_id and check whether 'binary' is available for this branch/commit_id
-				
-				// if not available, recursively check whether it is available for any 'previous' commit id
-				
-				// checkout the 'branch/commit_id' for which update needs to be built
-				
-				// update binary repo
-                zmanager.updateBinaryRepository();
+					// get the latest by "git pull" on "source" and "binary"
+					zmanager.gitpull();
+					
+					// calculate how many new branches/commits have been created since the last pull on source repo
+					zmanager.findNewCommits();
+					
+					zmanager.processNewCommits();
+					
+					// if not available, recursively check whether it is available for any 'previous' commit id
+					// checkout the 'branch/commit_id' for which update needs to be built
+					// update binary repo
+	                //zmanager.updateBinaryRepository();
+				}
 
 			} else {
 				if (zmanager.isRemoteBinaryRepositoryAvailable()) {

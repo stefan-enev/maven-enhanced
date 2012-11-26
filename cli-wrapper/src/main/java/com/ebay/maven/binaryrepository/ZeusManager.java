@@ -13,6 +13,8 @@ import org.apache.commons.lang.StringUtils;
 import org.codehaus.jackson.jaxrs.JacksonJsonProvider;
 import org.eclipse.jgit.api.*;
 import org.eclipse.jgit.api.errors.*;
+import org.eclipse.jgit.errors.IncorrectObjectTypeException;
+import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
@@ -35,6 +37,7 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 
 public class ZeusManager {
@@ -120,6 +123,48 @@ public class ZeusManager {
 		} catch (GitAPIException e) {
 			throw new GitException(e);
 		}
+	}
+	
+	/*
+	 * Use the binary git repo and/or the remote service to figure out 
+	 * the new commits made since the last pull on source repository.
+	 */
+	public void findNewCommits(){
+		
+		// get the history from binary repository
+		Git bingit = Git.wrap(binaryRepository);
+		RevWalk binwalk = new RevWalk(binaryRepository);
+		
+		Iterable<RevCommit> logs;
+		try {
+			logs = bingit.log().call();
+			Iterator<RevCommit> i = logs.iterator();
+			
+			while( i.hasNext() ){
+				RevCommit commit = binwalk.parseCommit(i.next() );
+				System.out.println( commit.getFullMessage() );
+			}
+			
+		} catch (NoHeadException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (GitAPIException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (MissingObjectException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IncorrectObjectTypeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	public void processNewCommits(){
+		
 	}
 	
 	public boolean isBinaryRepositoryAvailable(){

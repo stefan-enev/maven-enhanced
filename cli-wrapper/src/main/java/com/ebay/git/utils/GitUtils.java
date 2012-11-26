@@ -1,17 +1,26 @@
 package com.ebay.git.utils;
 
-import com.ebay.github.client.GitHubClient;
-import com.google.common.base.Strings;
-import org.eclipse.jgit.api.Status;
-import org.eclipse.jgit.api.StatusCommand;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.errors.NoWorkTreeException;
-import org.eclipse.jgit.lib.StoredConfig;
-import org.kohsuke.github.GHUser;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
+
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.Status;
+import org.eclipse.jgit.api.StatusCommand;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.NoHeadException;
+import org.eclipse.jgit.errors.IncorrectObjectTypeException;
+import org.eclipse.jgit.errors.MissingObjectException;
+import org.eclipse.jgit.errors.NoWorkTreeException;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.StoredConfig;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
+import org.kohsuke.github.GHUser;
+
+import com.ebay.github.client.GitHubClient;
+import com.google.common.base.Strings;
 
 public class GitUtils {
 	
@@ -203,6 +212,39 @@ public class GitUtils {
             }
         }
         return false;
+    }
+    
+    public static void getLastCommit( Repository repository ){
+		// get the history from binary repository
+		Git bingit = Git.wrap(repository);
+		RevWalk binwalk = new RevWalk(repository);
+		
+		Iterable<RevCommit> logs;
+		try {
+			logs = bingit.log().call();
+			Iterator<RevCommit> i = logs.iterator();
+			
+			while( i.hasNext() ){
+				RevCommit commit = binwalk.parseCommit(i.next() );
+				System.out.println( commit.getFullMessage() );
+			}
+			
+		} catch (NoHeadException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (GitAPIException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (MissingObjectException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IncorrectObjectTypeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
 
     public static void main(String[] args) throws Exception {

@@ -1,5 +1,10 @@
 package com.ebay.git.utils;
 
+import java.io.File;
+import java.io.IOException;
+
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.junit.Test;
 
 public class GitUtilsTest {
@@ -43,5 +48,21 @@ public class GitUtilsTest {
 	public void getGitOrgNameGitHtts(){
 		String org = GitUtils.getOrgName(repoUrlGitHttps);
 		System.out.println( "org for " + repoUrlGitHttps + " = " + org);
+	}
+	
+	@Test
+	public void getLastCommit(){
+		
+		FileRepositoryBuilder repobuiler = new FileRepositoryBuilder();
+		
+		try {
+			
+			Repository repository = repobuiler.findGitDir( new File(".") ).build();
+			GitUtils.getLastCommit(repository);
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }
