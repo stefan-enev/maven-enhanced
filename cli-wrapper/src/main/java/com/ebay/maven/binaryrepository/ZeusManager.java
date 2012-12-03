@@ -12,6 +12,7 @@ import com.sun.jersey.api.client.config.DefaultClientConfig;
 import org.apache.commons.lang.StringUtils;
 import org.codehaus.jackson.jaxrs.JacksonJsonProvider;
 import org.eclipse.jgit.api.*;
+import org.eclipse.jgit.api.MergeResult.MergeStatus;
 import org.eclipse.jgit.api.errors.*;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.MissingObjectException;
@@ -93,7 +94,9 @@ public class ZeusManager {
 	/*
 	 * Pull latest from 'source' and 'binary' repository.
 	 */
-	public void gitpull() throws GitException{
+	public boolean gitpull() throws GitException{
+		
+		boolean result = false;
 		
 		// do 'pull' on 'source'
 		Git srcgit = Git.wrap(sourceRepository);
@@ -101,8 +104,23 @@ public class ZeusManager {
 		
 		try {
 			
-			srcgit.pull().call();
-			bingit.pull().call();
+			PullResult srcpull = srcgit.pull().call();
+			PullResult binpull = bingit.pull().call();
+			
+			
+			if( srcpull.isSuccessful() && binpull.isSuccessful() ){
+				if( srcpull.getFetchResult() != null &&
+						( srcpull.getFetchResult().getTrackingRefUpdates().size() > 0 ) ){
+					result = true;
+				}
+				if( srcpull.getMergeResult() != null && 
+						(srcpull.getMergeResult().getMergeStatus() == MergeStatus.FAST_FORWARD ||
+						srcpull.getMergeResult().getMergeStatus() == MergeStatus.MERGED )){
+					result = true;
+				}
+				
+				// TODO: rebase status needs to be checked but it is ignored for now
+			}
 			
 		} catch (WrongRepositoryStateException e) {
 			throw new GitException(e);
@@ -123,13 +141,15 @@ public class ZeusManager {
 		} catch (GitAPIException e) {
 			throw new GitException(e);
 		}
+		
+		return result;
 	}
 	
 	/*
 	 * Use the binary git repo and/or the remote service to figure out 
 	 * the new commits made since the last pull on source repository.
 	 */
-	public void findNewCommits(){
+	public void findNewCommits() throws GitException{
 		
 		// get the history from binary repository
 		Git bingit = Git.wrap(binaryRepository);
@@ -147,23 +167,23 @@ public class ZeusManager {
 			
 		} catch (NoHeadException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new GitException(e);
 		} catch (GitAPIException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new GitException(e);
 		} catch (MissingObjectException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new GitException(e);
 		} catch (IncorrectObjectTypeException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new GitException(e);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new GitException(e);
 		}
 	}
 	
 	public void processNewCommits(){
+		
+	}
+	
+	public void build(String command){
 		
 	}
 	

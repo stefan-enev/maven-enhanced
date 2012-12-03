@@ -103,31 +103,68 @@ public class CliWrapper {
 				zmanager.setBaseServiceUrl(input.getMapSvcUrl() );
 			}
 			
-			if (zmanager.isBinaryRepositoryAvailable()) {
-				
-				while( true ){
-				
-					// get the latest by "git pull" on "source" and "binary"
-					zmanager.gitpull();
+			long starttime=0l;
+			long endtime = 0l;
+			
+			while( true ){
+			
+				if (zmanager.isBinaryRepositoryAvailable()) {
 					
-					// calculate how many new branches/commits have been created since the last pull on source repo
-					zmanager.findNewCommits();
+						// if previous run started in less then 1 minute before, wait for a minute
+						long begintime = Calendar.getInstance().getTimeInMillis();
+						if( ( begintime - starttime ) < (60*1000) ){
+							Thread.sleep(60*1000);
+						}
+						
+						// calculate start time
+						starttime = Calendar.getInstance().getTimeInMillis();
+						
+						// TODO: run 'show-ref' and keep the current status of src & bin repos in memory before doing a 'fetch'
+						
+						// TODO: ideally we need 'git fetch' and record what is fetched, which is then processed
+	
+						// TODO: calculate how many new branches/commits have been created since the last fetch on source repo
+						//zmanager.findNewCommits();
+						
+						// TODO: figure out the new commits and process each one of them
+						//zmanager.processNewCommits();
+	
+						// TODO: remove this after implementing above steps. this is temporary
+						// get the latest by "git pull" on "source" and "binary". 
+						zmanager.gitpull();
+						
+						// TODO: perform maven build. Remove this after implementing 'processNewCommits'
+						zmanager.build("mvn compile");
+						
+						// update binary repo
+		                zmanager.updateBinaryRepository();
+		                
+		                endtime = Calendar.getInstance().getTimeInMillis();
+		                
+		                System.out.println("Updated in " + ((endtime-starttime)/1000) + " seconds");
 					
-					zmanager.processNewCommits();
-					
-					// if not available, recursively check whether it is available for any 'previous' commit id
-					// checkout the 'branch/commit_id' for which update needs to be built
-					// update binary repo
-	                //zmanager.updateBinaryRepository();
-				}
-
-			} else {
-				if (zmanager.isRemoteBinaryRepositoryAvailable()) {
-					// IN this case, setup must be run before.
-					System.out.println("Remote binary repository is already available, but not cloned. Please run -s option");
+	
 				} else {
-					zmanager.createBinaryRepository();
-				}                
+					
+					if (zmanager.isRemoteBinaryRepositoryAvailable()) {
+						
+						System.out.println("cloning binary repository....");
+						// clone binary repository
+						zmanager.cloneBinaryRepository();
+						
+						System.out.println("binary repository cloned");
+					
+					} else {
+						
+						// calculate start time
+						starttime = Calendar.getInstance().getTimeInMillis();
+						zmanager.createBinaryRepository();
+						
+						endtime = Calendar.getInstance().getTimeInMillis();
+		                System.out.println("Created in " + ((endtime-starttime)/1000) + " seconds");
+					}                
+				}
+			
 			}
 			
 		} catch (IOException e) {
@@ -137,6 +174,9 @@ public class CliWrapper {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (MapServiceException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
