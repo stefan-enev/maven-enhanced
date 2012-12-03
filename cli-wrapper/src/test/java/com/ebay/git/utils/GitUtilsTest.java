@@ -1,11 +1,12 @@
 package com.ebay.git.utils;
 
-import java.io.File;
 import java.io.IOException;
 
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.junit.Test;
+
+import com.ebay.maven.binaryrepository.GitException;
 
 public class GitUtilsTest {
 	
@@ -57,10 +58,13 @@ public class GitUtilsTest {
 		
 		try {
 			
-			Repository repository = repobuiler.findGitDir( new File(".") ).build();
+			Repository repository = repobuiler.findGitDir().build();
 			GitUtils.getLastCommit(repository);
 			
 		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (GitException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}

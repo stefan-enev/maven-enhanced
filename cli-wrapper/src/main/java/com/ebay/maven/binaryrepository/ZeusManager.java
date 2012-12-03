@@ -332,6 +332,7 @@ public class ZeusManager {
 		// commit
 		System.out.println("commiting the files");
 		CommitCommand commit = binaryRepo.commit();
+		// add the 'source' repository git-url, commit-id and branch 
 		commit.setMessage("adding readme.md file");
 		
 		try {

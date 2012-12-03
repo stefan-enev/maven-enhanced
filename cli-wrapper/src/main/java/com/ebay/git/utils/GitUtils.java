@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.Iterator;
 
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.LogCommand;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.StatusCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -20,6 +21,7 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.kohsuke.github.GHUser;
 
 import com.ebay.github.client.GitHubClient;
+import com.ebay.maven.binaryrepository.GitException;
 import com.google.common.base.Strings;
 
 public class GitUtils {
@@ -214,7 +216,7 @@ public class GitUtils {
         return false;
     }
     
-    public static void getLastCommit( Repository repository ){
+    public static void getLastCommit( Repository repository ) throws GitException{
 		// get the history from binary repository
 		Git bingit = Git.wrap(repository);
 		RevWalk binwalk = new RevWalk(repository);
@@ -224,24 +226,39 @@ public class GitUtils {
 			logs = bingit.log().call();
 			Iterator<RevCommit> i = logs.iterator();
 			
+			int j=0;
 			while( i.hasNext() ){
 				RevCommit commit = binwalk.parseCommit(i.next() );
-				System.out.println( commit.getFullMessage() );
+				System.out.println( j + ", " 
+									+ commit.getId() + ", " 
+									+ commit.getCommitTime() + ", "
+									+ commit.getFullMessage() );
+				j++;
 			}
 			
+		} catch (NoHeadException e) {
+			throw new GitException(e);
+		} catch (GitAPIException e) {
+			throw new GitException(e);
+		} catch (MissingObjectException e) {
+			throw new GitException(e);
+		} catch (IncorrectObjectTypeException e) {
+			throw new GitException(e);
+		} catch (IOException e) {
+			throw new GitException(e);
+		}
+    }
+    
+    public static void getAllHistory( Repository repository ){
+    	Git git = Git.wrap(repository);
+    	LogCommand logCmd = git.log();
+    	
+    	try {
+			logCmd.call();
 		} catch (NoHeadException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (GitAPIException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (MissingObjectException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IncorrectObjectTypeException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
