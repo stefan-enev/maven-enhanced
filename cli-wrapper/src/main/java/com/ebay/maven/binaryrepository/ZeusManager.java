@@ -600,6 +600,11 @@ public class ZeusManager {
 		// Checkout the "branch" if it is not equal to "master"
 		if( !branchName.toLowerCase().equals("master") ){
 			
+			// check whether the branch exists
+			binrepository.getRepository().getAllRefsByPeeledObjectId();
+				
+			// 
+			
 			CheckoutCommand checkoutCmd = binrepository.checkout();
 			checkoutCmd.setCreateBranch(true);
 			checkoutCmd.setName( branchName);

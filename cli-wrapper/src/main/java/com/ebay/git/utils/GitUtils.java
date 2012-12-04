@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.LogCommand;
@@ -14,10 +17,14 @@ import org.eclipse.jgit.api.errors.NoHeadException;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.errors.NoWorkTreeException;
+import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.RefComparator;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.util.RefMap;
 import org.kohsuke.github.GHUser;
 
 import com.ebay.github.client.GitHubClient;
@@ -249,6 +256,7 @@ public class GitUtils {
 		}
     }
     
+
     public static void getAllHistory( Repository repository ){
     	Git git = Git.wrap(repository);
     	LogCommand logCmd = git.log();
@@ -263,6 +271,49 @@ public class GitUtils {
 			e.printStackTrace();
 		}
     }
+    
+    public static List<String> getAllBranches( Repository repository){
+    	
+    	
+    	Iterable<Ref> refs;
+    	
+    	
+    	
+    	// get the sorted refs
+    	Map<String, Ref> all = repository.getAllRefs();
+		if (all instanceof RefMap
+				|| (all instanceof SortedMap && ((SortedMap) all).comparator() == null)){
+			refs= all.values();
+		}else{
+			refs= RefComparator.sort(all.values());
+		}
+		
+		List<String> branches = new ArrayList<String>();
+		for (final Ref r : refs ) {
+			String branch;
+			
+			//System.out.println( r.getName() );
+			if( r.getName().startsWith(Constants.R_REMOTES) ){
+				branch = r.getName().substring(5);
+			}else if( r.getName().startsWith(Constants.R_HEADS )){
+				branch = r.getName().substring(11);
+			}else{
+				branch = r.getName();
+			}
+			
+			// ignore branches with name 'HEAD'
+			if( branch.endsWith("HEAD") || branch.startsWith("heads")
+					|| branch.startsWith(Constants.R_TAGS)){
+				// no op
+			}else{
+				branches.add( branch);
+			}
+			
+		}
+		
+		return branches;
+    }
+    
 
     public static void main(String[] args) throws Exception {
         System.out.println("MAIN" + GitUtils.existsInGit("binrepo-devex"));

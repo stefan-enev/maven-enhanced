@@ -1,6 +1,8 @@
 package com.ebay.git.utils;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
@@ -68,5 +70,25 @@ public class GitUtilsTest {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+	
+	@Test
+	public void listAllBranches(){
+		
+		FileRepositoryBuilder repobuiler = new FileRepositoryBuilder();
+		
+		try {
+			
+			Repository repository = repobuiler.findGitDir(new File("s:\\git\\demo\\search_raptor")).build();
+			List<String> branches = GitUtils.getAllBranches(repository);
+			
+			for( String branch : branches ){
+				System.out.println(branch);
+			}
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} 
 	}
 }
