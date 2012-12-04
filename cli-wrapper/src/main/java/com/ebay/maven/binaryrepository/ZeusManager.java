@@ -4,6 +4,8 @@ import com.ebay.beans.BinRepoBranchCommitDO;
 import com.ebay.git.utils.GitUtils;
 import com.ebay.github.client.GitHubClient;
 import com.ebay.utils.FileUtil;
+import com.ebay.utils.MavenUtil;
+import com.ebay.utils.ProcessException;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.UniformInterfaceException;
 import com.sun.jersey.api.client.WebResource;
@@ -184,8 +186,19 @@ public class ZeusManager {
 		
 	}
 	
-	public void build(String command){
+	public boolean build(String command) {
 		
+		boolean result;
+		try {
+			result = MavenUtil.executeMvnCommand(command, root, System.out);
+		} catch (ProcessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			result = false;
+		}
+		
+		System.out.println("maven command " + command + " exited with result " + result );
+		return result;
 	}
 	
 	public boolean isBinaryRepositoryAvailable(){

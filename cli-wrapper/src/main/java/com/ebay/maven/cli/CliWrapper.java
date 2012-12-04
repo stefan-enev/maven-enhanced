@@ -26,9 +26,9 @@ import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Repository;
 
-import com.ebay.maven.binaryrepository.ZeusManager;
 import com.ebay.maven.binaryrepository.GitException;
 import com.ebay.maven.binaryrepository.MapServiceException;
+import com.ebay.maven.binaryrepository.ZeusManager;
 import com.ebay.maven.utils.PomUtils;
 
 /**
@@ -134,7 +134,8 @@ public class CliWrapper {
 						zmanager.gitpull();
 						
 						// TODO: perform maven build. Remove this after implementing 'processNewCommits'
-						zmanager.build("mvn compile");
+						// even if it fails, continue the loop
+						zmanager.build("compile");
 						
 						// update binary repo
 		                zmanager.updateBinaryRepository();
@@ -179,7 +180,7 @@ public class CliWrapper {
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
+		} 
 	}
 	
 	public void setupProject(final InputParams input ) {
