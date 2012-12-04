@@ -272,12 +272,23 @@ public class GitUtils {
 		}
     }
     
+    public static boolean isRemoteBranchExists( Repository repository, String branch ){
+    	boolean result = false;
+    	
+    	List<String> branches = getAllBranches(repository);
+    	
+    	for( String b : branches ){
+    		if( b.contains(branch)){
+    			result = true;
+    			break;
+    		}
+    	}
+    	return result;
+    }
+    
     public static List<String> getAllBranches( Repository repository){
     	
-    	
     	Iterable<Ref> refs;
-    	
-    	
     	
     	// get the sorted refs
     	Map<String, Ref> all = repository.getAllRefs();
@@ -308,7 +319,6 @@ public class GitUtils {
 			}else{
 				branches.add( branch);
 			}
-			
 		}
 		
 		return branches;

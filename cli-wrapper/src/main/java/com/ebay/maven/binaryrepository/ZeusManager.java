@@ -41,6 +41,7 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
+// TODO: refactor this class, it has gotten too big.
 public class ZeusManager {
 
     private File root;
@@ -195,11 +196,14 @@ public class ZeusManager {
         
         // find where ".git" folder is found
 		File f = sourceRepository.getDirectory();
-        // repository foldername
+        
+		// repository foldername
 		String repositoryFolderName = f.getParentFile().getName();
-        // go to parent directory
+        
+		// go to parent directory
 		File parent = f.getParentFile().getParentFile();
 		File binaryRepoFolder = new File( parent , ( "." + repositoryFolderName) );
+		
         // check whether ".SourceRepo.git" folder exists
 		if (binaryRepoFolder.exists() && binaryRepoFolder.isDirectory() && binaryRepoFolder.canRead()) {
             // check whether ".SourceRepo.git/.git" exists
@@ -208,12 +212,22 @@ public class ZeusManager {
 				result = true;
 			}
 		}
+		
 		// return result && isRepoPresentInGit();
         boolean remoteRepoCheck = false;
         try {
             remoteRepoCheck = isRemoteBinaryRepositoryAvailable();
         } catch (GitException e) {
             e.printStackTrace();
+        }
+        
+        if( result && remoteRepoCheck ){
+        	try {
+				binaryRepository = new FileRepository(new File(binaryRepoFolder, ".git"));
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
         }
         
         return result && remoteRepoCheck;
@@ -580,6 +594,8 @@ public class ZeusManager {
 			
 			System.out.println("cloning repository " + giturl );
 			binrepository = cloneCmd.call();
+			
+			binaryRepository = new FileRepository( binrepository.getRepository().getDirectory());
             
         } catch (InvalidRemoteException e) {
 			throw new GitException("unable to clone " + giturl, e);
@@ -587,6 +603,8 @@ public class ZeusManager {
 			throw new GitException("unable to clone " + giturl, e);
 		} catch (GitAPIException e) {
 			throw new GitException("unable to clone " + giturl, e);
+		} catch (IOException e) {
+			throw new GitException("unable assign " + giturl, e);
 		}
 		
 		// read the branch from "source" repository
@@ -601,39 +619,72 @@ public class ZeusManager {
 		if( !branchName.toLowerCase().equals("master") ){
 			
 			// check whether the branch exists
-			binrepository.getRepository().getAllRefsByPeeledObjectId();
+			boolean remoteBranchExists = GitUtils.isRemoteBranchExists(binaryRepository, branchName);
+			
+			CheckoutResult result =null;
+			
+			if( !remoteBranchExists ){
 				
-			// 
-			
-			CheckoutCommand checkoutCmd = binrepository.checkout();
-			checkoutCmd.setCreateBranch(true);
-			checkoutCmd.setName( branchName);
-			checkoutCmd.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK );
-			checkoutCmd.setStartPoint( "origin/" + branchName );
-
-			System.out.println("checking out branch " + branchName );
-			
-			try {
-                //Ref branch = branchCmd.call();
-				Ref ref = checkoutCmd.call();
-				System.out.println("checkout is complete" );
-				if( ref != null ){
-					//System.out.println("ref " + ref.getName() );
+				try {
+					
+					// create branch
+					Git binrepo = Git.wrap(binaryRepository);
+					CreateBranchCommand branchCmd = binrepo.branchCreate();
+					branchCmd.setName(branchName);
+					branchCmd.call();
+					
+					// checkout the branch
+					CheckoutCommand checkout = binrepo.checkout();
+					checkout.setName(branchName);
+					Ref ref = checkout.call();
+					
+					if( ref == null ){
+						// TODO: 
+					}else{
+						result = checkout.getResult();
+					}
+					
+				} catch (RefAlreadyExistsException e) {
+					throw new GitException("unable to create branch " + branchName, e);
+				} catch (RefNotFoundException e) {
+					throw new GitException("unable to create branch " + branchName, e);
+				} catch (InvalidRefNameException e) {
+					throw new GitException("unable to create branch " + branchName, e);
+				} catch (GitAPIException e) {
+					throw new GitException("unable to create branch " + branchName, e);
 				}
 				
-			} catch (RefAlreadyExistsException e) {
-				throw new GitException("unable to checkout branch " + branchName, e);
-			} catch (RefNotFoundException e) {
-				throw new GitException("unable to checkout branch " + branchName, e);
-			} catch (InvalidRefNameException e) {
-				throw new GitException("unable to checkout branch " + branchName, e);
-			} catch (CheckoutConflictException e) {
-				throw new GitException("unable to checkout branch " + branchName, e);
-			} catch (GitAPIException e) {
-				throw new GitException("unable to checkout branch " + branchName, e);
-			}
+			}else{
+				
+				CheckoutCommand checkoutCmd = binrepository.checkout();
+				checkoutCmd.setCreateBranch(true);
+				checkoutCmd.setName( branchName);
+				checkoutCmd.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK );
+				checkoutCmd.setStartPoint( "origin/" + branchName );
 
-			CheckoutResult result = checkoutCmd.getResult();
+				System.out.println("checking out branch " + branchName );
+				
+				try {
+	                //Ref branch = branchCmd.call();
+					Ref ref = checkoutCmd.call();
+					System.out.println("checkout is complete" );
+					if( ref != null ){
+						//System.out.println("ref " + ref.getName() );
+						result = checkoutCmd.getResult();
+					}
+					
+				} catch (RefAlreadyExistsException e) {
+					throw new GitException("unable to checkout branch " + branchName, e);
+				} catch (RefNotFoundException e) {
+					throw new GitException("unable to checkout branch " + branchName, e);
+				} catch (InvalidRefNameException e) {
+					throw new GitException("unable to checkout branch " + branchName, e);
+				} catch (CheckoutConflictException e) {
+					throw new GitException("unable to checkout branch " + branchName, e);
+				} catch (GitAPIException e) {
+					throw new GitException("unable to checkout branch " + branchName, e);
+				}
+			}
 			
 			if( result.getStatus().equals(CheckoutResult.OK_RESULT)){
 				System.out.println("checkout is OK");
