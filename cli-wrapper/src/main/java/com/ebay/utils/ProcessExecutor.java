@@ -14,7 +14,6 @@ import java.util.regex.Pattern;
 
 /** 
  * This class is copied from com.ebay.ebox.core.utils.ProcessExecutor
- * @author lozhang
  */
 public class ProcessExecutor {
 	
