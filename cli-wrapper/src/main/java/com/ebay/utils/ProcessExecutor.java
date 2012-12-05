@@ -51,6 +51,7 @@ public class ProcessExecutor {
         builder = new ProcessBuilder(cmdarray);
         builder.redirectErrorStream(redirectErrorStream);
         builder.directory(directory);
+        
         outStream = logger;
 	}
 	

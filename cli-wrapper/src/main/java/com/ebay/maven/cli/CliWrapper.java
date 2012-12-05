@@ -195,7 +195,8 @@ public class CliWrapper {
             repository.setBaseServiceUrl(input.getMapSvcUrl());
 			
 			if( repository.isBinaryRepositoryAvailable() ){
-				
+				repository.checkoutAndCopyFromBinaryRepository();
+				System.out.println("setup is complete");
 			}else if( repository.isRemoteBinaryRepositoryAvailable() ) {
 				repository.cloneBinaryRepository(true);
 				System.out.println("setup is complete");

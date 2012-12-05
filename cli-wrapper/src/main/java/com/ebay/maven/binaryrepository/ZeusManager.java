@@ -654,6 +654,9 @@ public class ZeusManager {
 			throw new GitException("unable assign " + giturl, e);
 		}
 		
+		checkoutAndCopyFromBinaryRepository();
+		
+		/*
 		// read the branch from "source" repository
 		String branchName = "master";
 		try {
@@ -663,6 +666,7 @@ public class ZeusManager {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		
 		
 		// Checkout the "branch" if it is not equal to "master"
 		if( !branchName.toLowerCase().equals("master") ){
@@ -754,6 +758,7 @@ public class ZeusManager {
 				// TODO: handle the error.
 			}
 		}
+		*/
 
 		//System.out.println( result.getStatus());
         // TODO: find out whether Binary is upto-date with the sources
@@ -798,13 +803,132 @@ public class ZeusManager {
         }
         */
 		
+
+    }
+	
+	public void checkoutAndCopyFromBinaryRepository() throws GitException{
+		// read the branch from "source" repository
+		String branchName = "master";
 		try {
-			FileUtil.copyBinaryFolders(binaryRepoFolder, sourceDir, ".git");
+			branchName = sourceRepository.getBranch();
+			
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		// Checkout the "branch" if it is not equal to "master"
+		if( !branchName.toLowerCase().equals("master") ){
+			
+			// check whether the branch exists
+			boolean remoteBranchExists = GitUtils.isRemoteBranchExists(binaryRepository, branchName);
+			
+			CheckoutResult result =null;
+			
+			if( !remoteBranchExists ){
+				
+				try {
+					
+					// create branch
+					Git binrepo = Git.wrap(binaryRepository);
+					CreateBranchCommand branchCmd = binrepo.branchCreate();
+					branchCmd.setName(branchName);
+					branchCmd.call();
+					
+					// checkout the branch
+					CheckoutCommand checkout = binrepo.checkout();
+					checkout.setName(branchName);
+					Ref ref = checkout.call();
+					
+					if( ref == null ){
+						// TODO: 
+					}else{
+						result = checkout.getResult();
+					}
+					
+					FileBasedConfig config = binaryRepository.getConfig();
+					config.setString("branch", branchName, "remote", "origin");
+					config.setString("branch", branchName, "merge", "refs/heads/"+ branchName);
+					config.save();
+					
+					
+					// push this branch to remote
+					PushCommand push = binrepo.push();
+					push.setPushAll();
+					push.call();
+					
+				} catch (RefAlreadyExistsException e) {
+					throw new GitException("unable to create branch " + branchName, e);
+				} catch (RefNotFoundException e) {
+					throw new GitException("unable to create branch " + branchName, e);
+				} catch (InvalidRefNameException e) {
+					throw new GitException("unable to create branch " + branchName, e);
+				} catch (GitAPIException e) {
+					throw new GitException("unable to create branch " + branchName, e);
+				} catch (IOException e) {
+					throw new GitException("unable to save git config " + branchName, e);
+				}
+				
+			}else{
+				Git binrepository = Git.wrap(binaryRepository);
+				
+				// check the current branch in binary repository
+				try {
+					if( !binaryRepository.getBranch().equals(branchName) ){
+						
+						CheckoutCommand checkoutCmd = binrepository.checkout();
+						checkoutCmd.setCreateBranch(true);
+						checkoutCmd.setName( branchName);
+						checkoutCmd.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK );
+						checkoutCmd.setStartPoint( "origin/" + branchName );
+
+						System.out.println("checking out branch " + branchName );
+						
+						try {
+			                //Ref branch = branchCmd.call();
+							Ref ref = checkoutCmd.call();
+							System.out.println("checkout is complete" );
+							if( ref != null ){
+								//System.out.println("ref " + ref.getName() );
+								result = checkoutCmd.getResult();
+							}
+							
+						} catch (RefAlreadyExistsException e) {
+							throw new GitException("unable to checkout branch " + branchName, e);
+						} catch (RefNotFoundException e) {
+							throw new GitException("unable to checkout branch " + branchName, e);
+						} catch (InvalidRefNameException e) {
+							throw new GitException("unable to checkout branch " + branchName, e);
+						} catch (CheckoutConflictException e) {
+							throw new GitException("unable to checkout branch " + branchName, e);
+						} catch (GitAPIException e) {
+							throw new GitException("unable to checkout branch " + branchName, e);
+						}
+					}
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				
+
+			}
+			
+			if( result != null && result.getStatus().equals(CheckoutResult.OK_RESULT)){
+				System.out.println("checkout is OK");
+			}else{
+				// TODO: handle the error.
+			}
+		}
+		
+		try {
+			FileUtil.copyBinaryFolders(binaryRepository.getDirectory().getParentFile(), 
+										sourceRepository.getDirectory().getParentFile(), 
+										".git");
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-    }
+	}
 
     public void updateBinaryRepository() 
     		throws IOException, GitException, MapServiceException {

@@ -66,6 +66,9 @@ public class MavenUtil {
             System.out.println("executing maven command :" + sb.toString() );
 
             ProcessExecutor mvnExecutor = new ProcessExecutor(sb.toString(), workdir, logger);
+            
+            // pass all the environment from parent shell
+            mvnExecutor.getEnvironment().putAll(System.getenv());
 
             boolean result = false;
 
@@ -77,6 +80,4 @@ public class MavenUtil {
 
             return result;
     }
-
-
 }
