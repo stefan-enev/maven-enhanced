@@ -1,6 +1,5 @@
 package com.ebay.git.utils;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
@@ -79,8 +78,8 @@ public class GitUtilsTest {
 		
 		try {
 			
-			Repository repository = repobuiler.findGitDir(new File("s:\\git\\demo\\search_raptor")).build();
-			List<String> branches = GitUtils.getAllBranches(repository);
+			Repository repository = repobuiler.findGitDir().build();
+			List<String> branches = GitUtils.getAllRemoteBranches(repository);
 			
 			for( String branch : branches ){
 				System.out.println(branch);

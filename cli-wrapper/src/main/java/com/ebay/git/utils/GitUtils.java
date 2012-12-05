@@ -3,19 +3,19 @@ package com.ebay.git.utils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 
+import org.eclipse.jgit.api.AddCommand;
+import org.eclipse.jgit.api.CommitCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.LogCommand;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.StatusCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.api.errors.NoHeadException;
-import org.eclipse.jgit.errors.IncorrectObjectTypeException;
-import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.errors.NoWorkTreeException;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.Ref;
@@ -156,6 +156,8 @@ public class GitUtils {
 		return repository;
 	}
 
+	//TODO: AddCommand support to add files as pattern, so could add buntch of files in one shot
+	//      I mean needn't this method to get files to add.
 	public static Collection<String> getFilesToStage( StatusCommand statusCmd ){
 		
 		Collection<String> tobeAdded = new ArrayList<String>();
@@ -223,7 +225,8 @@ public class GitUtils {
         return false;
     }
     
-    public static void getLastCommit( Repository repository ) throws GitException{
+    //FIXME: not sure why get last commit, latest one?
+    public static RevCommit getLastCommit( Repository repository ) throws GitException{
 		// get the history from binary repository
 		Git bingit = Git.wrap(repository);
 		RevWalk binwalk = new RevWalk(repository);
@@ -233,49 +236,46 @@ public class GitUtils {
 			logs = bingit.log().call();
 			Iterator<RevCommit> i = logs.iterator();
 			
-			int j=0;
+			RevCommit commit = null;
 			while( i.hasNext() ){
-				RevCommit commit = binwalk.parseCommit(i.next() );
-				System.out.println( j + ", " 
-									+ commit.getId() + ", " 
-									+ commit.getCommitTime() + ", "
-									+ commit.getFullMessage() );
-				j++;
+				commit = binwalk.parseCommit(i.next() );
 			}
 			
-		} catch (NoHeadException e) {
-			throw new GitException(e);
-		} catch (GitAPIException e) {
-			throw new GitException(e);
-		} catch (MissingObjectException e) {
-			throw new GitException(e);
-		} catch (IncorrectObjectTypeException e) {
-			throw new GitException(e);
-		} catch (IOException e) {
+			if (commit == null){
+				throw new GitException("Haven't found any commits in specified repository:"+repository.getDirectory().getAbsolutePath());
+			}
+			
+			return commit;
+		} catch (Exception e) {
 			throw new GitException(e);
 		}
     }
-    
 
-    public static void getAllHistory( Repository repository ){
+    public static List<RevCommit> getAllCommitsHistory( Repository repository ){
     	Git git = Git.wrap(repository);
     	LogCommand logCmd = git.log();
     	
     	try {
-			logCmd.call();
-		} catch (NoHeadException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (GitAPIException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+    		List<RevCommit> commitList = new ArrayList<RevCommit>();
+    		
+    		Iterable<RevCommit> commits = logCmd.call();
+    		Iterator<RevCommit> iterator = commits.iterator();
+    		while(iterator.hasNext()){
+    			commitList.add(iterator.next());
+    		}
+    		
+    		return commitList;
+		} catch (Exception e) {
+			//TODO: should log it, but shouldn't block whole process
 		}
+		
+		return Collections.emptyList();
     }
     
     public static boolean isRemoteBranchExists( Repository repository, String branch ){
     	boolean result = false;
     	
-    	List<String> branches = getAllBranches(repository);
+    	List<String> branches = getAllRemoteBranches(repository);
     	
     	for( String b : branches ){
     		if( b.contains(branch)){
@@ -285,8 +285,9 @@ public class GitUtils {
     	}
     	return result;
     }
-    
-    public static List<String> getAllBranches( Repository repository){
+
+    //TODO: currently, only analyze local git repo's refs instead of talk with remote git repo.
+    public static List<String> getAllRemoteBranches( Repository repository){
     	
     	Iterable<Ref> refs;
     	
@@ -301,21 +302,12 @@ public class GitUtils {
 		
 		List<String> branches = new ArrayList<String>();
 		for (final Ref r : refs ) {
-			String branch;
-			
-			//System.out.println( r.getName() );
-			if( r.getName().startsWith(Constants.R_REMOTES) ){
-				branch = r.getName().substring(5);
-			}else if( r.getName().startsWith(Constants.R_HEADS )){
-				branch = r.getName().substring(11);
-			}else{
-				branch = r.getName();
-			}
-			
-			// ignore branches with name 'HEAD'
+			String branch = getRemoteBranchName(r.getName());
+						
+			// ignore branches with name 'HEAD' or ""(not remote branch)
 			if( branch.endsWith("HEAD") || branch.startsWith("heads")
-					|| branch.startsWith(Constants.R_TAGS)){
-				// no op
+					|| branch.startsWith(Constants.R_TAGS) || branch.equals("")){
+				continue;
 			}else{
 				branches.add( branch);
 			}
@@ -324,7 +316,45 @@ public class GitUtils {
 		return branches;
     }
     
+    private static String getRemoteBranchName(String refName){
+    	if (refName.startsWith(Constants.R_REMOTES))
+			return refName.substring(Constants.R_REMOTES.length());
+		return "";
+    }
 
+    /**
+     * add all changes into staging area, then commit them all.
+     * 
+     * @param git
+     * @param commitMessage
+     * @throws GitException
+     */
+    public static void addAndCommitAllChanges(Git git, String commitMessage) throws GitException{
+    	addAllChanges(git);
+    	commitAllChanges(git, commitMessage);
+    }
+
+	private static void addAllChanges(Git git) throws GitException{
+    	AddCommand addCmd = git.add();
+		addCmd.addFilepattern(".");
+        try {
+			addCmd.call();
+		} catch (Exception e) {
+			throw new GitException("unable to add files", e);
+		}
+    }
+    
+	private static void commitAllChanges(Git git, String commitMessage) throws GitException {
+        CommitCommand commit = git.commit();
+		commit.setMessage(commitMessage);
+        
+		try{
+			commit.call();
+		}catch(Exception e){
+			throw new GitException("fail to commit changes.", e);
+		}
+	}
+    
     public static void main(String[] args) throws Exception {
         System.out.println("MAIN" + GitUtils.existsInGit("binrepo-devex"));
         System.out.println("MAIN" + GitUtils.existsInGit("CreatedUsingGitHub-API-Client"));
