@@ -1,5 +1,64 @@
 package com.ebay.maven.binaryrepository;
 
+import java.io.File;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+
+import javax.ws.rs.core.MediaType;
+
+import org.apache.commons.lang.StringUtils;
+import org.codehaus.jackson.jaxrs.JacksonJsonProvider;
+import org.eclipse.jgit.api.AddCommand;
+import org.eclipse.jgit.api.CheckoutCommand;
+import org.eclipse.jgit.api.CheckoutResult;
+import org.eclipse.jgit.api.CloneCommand;
+import org.eclipse.jgit.api.CommitCommand;
+import org.eclipse.jgit.api.CreateBranchCommand;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.InitCommand;
+import org.eclipse.jgit.api.MergeResult.MergeStatus;
+import org.eclipse.jgit.api.PullResult;
+import org.eclipse.jgit.api.PushCommand;
+import org.eclipse.jgit.api.StatusCommand;
+import org.eclipse.jgit.api.errors.CanceledException;
+import org.eclipse.jgit.api.errors.CheckoutConflictException;
+import org.eclipse.jgit.api.errors.ConcurrentRefUpdateException;
+import org.eclipse.jgit.api.errors.DetachedHeadException;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.InvalidConfigurationException;
+import org.eclipse.jgit.api.errors.InvalidRefNameException;
+import org.eclipse.jgit.api.errors.InvalidRemoteException;
+import org.eclipse.jgit.api.errors.NoFilepatternException;
+import org.eclipse.jgit.api.errors.NoHeadException;
+import org.eclipse.jgit.api.errors.NoMessageException;
+import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
+import org.eclipse.jgit.api.errors.RefNotFoundException;
+import org.eclipse.jgit.api.errors.TransportException;
+import org.eclipse.jgit.api.errors.UnmergedPathsException;
+import org.eclipse.jgit.api.errors.WrongRepositoryStateException;
+import org.eclipse.jgit.errors.IncorrectObjectTypeException;
+import org.eclipse.jgit.errors.MissingObjectException;
+import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.StoredConfig;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.storage.file.FileBasedConfig;
+import org.eclipse.jgit.storage.file.FileRepository;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.util.FileUtils;
+import org.kohsuke.github.GHOrganization;
+import org.kohsuke.github.GHRepository;
+import org.kohsuke.github.GitHub;
+
 import com.ebay.beans.BinRepoBranchCommitDO;
 import com.ebay.git.utils.GitUtils;
 import com.ebay.github.client.GitHubClient;
@@ -11,37 +70,6 @@ import com.sun.jersey.api.client.UniformInterfaceException;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.client.config.ClientConfig;
 import com.sun.jersey.api.client.config.DefaultClientConfig;
-import org.apache.commons.lang.StringUtils;
-import org.codehaus.jackson.jaxrs.JacksonJsonProvider;
-import org.eclipse.jgit.api.*;
-import org.eclipse.jgit.api.MergeResult.MergeStatus;
-import org.eclipse.jgit.api.errors.*;
-import org.eclipse.jgit.errors.IncorrectObjectTypeException;
-import org.eclipse.jgit.errors.MissingObjectException;
-import org.eclipse.jgit.lib.Constants;
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.lib.StoredConfig;
-import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.storage.file.FileRepository;
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
-import org.eclipse.jgit.util.FileUtils;
-import org.kohsuke.github.GHOrganization;
-import org.kohsuke.github.GHRepository;
-import org.kohsuke.github.GitHub;
-
-import javax.ws.rs.core.MediaType;
-import java.io.File;
-import java.io.FilenameFilter;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
 
 // TODO: refactor this class, it has gotten too big.
 public class ZeusManager {
@@ -624,6 +652,8 @@ public class ZeusManager {
 		String branchName = "master";
 		try {
 			branchName = sourceRepository.getBranch();
+			
+			
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -657,6 +687,17 @@ public class ZeusManager {
 						result = checkout.getResult();
 					}
 					
+					FileBasedConfig config = binaryRepository.getConfig();
+					config.setString("branch", branchName, "remote", "origin");
+					config.setString("branch", branchName, "merge", "refs/heads/"+ branchName);
+					config.save();
+					
+					
+					// push this branch to remote
+					PushCommand push = binrepo.push();
+					push.setPushAll();
+					push.call();
+					
 				} catch (RefAlreadyExistsException e) {
 					throw new GitException("unable to create branch " + branchName, e);
 				} catch (RefNotFoundException e) {
@@ -665,6 +706,8 @@ public class ZeusManager {
 					throw new GitException("unable to create branch " + branchName, e);
 				} catch (GitAPIException e) {
 					throw new GitException("unable to create branch " + branchName, e);
+				} catch (IOException e) {
+					throw new GitException("unable to save git config " + branchName, e);
 				}
 				
 			}else{
