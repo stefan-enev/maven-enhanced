@@ -151,7 +151,7 @@ public class CliWrapper {
 						
 						System.out.println("cloning binary repository....");
 						// clone binary repository
-						zmanager.cloneBinaryRepository();
+						zmanager.cloneBinaryRepository(false);
 						
 						System.out.println("binary repository cloned");
 					
@@ -197,7 +197,7 @@ public class CliWrapper {
 			if( repository.isBinaryRepositoryAvailable() ){
 				
 			}else if( repository.isRemoteBinaryRepositoryAvailable() ) {
-				repository.cloneBinaryRepository();
+				repository.cloneBinaryRepository(true);
 				System.out.println("setup is complete");
 			}else{
 				// TODO: anything we can do?

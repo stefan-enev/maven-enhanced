@@ -601,7 +601,7 @@ public class ZeusManager {
 		}
 	}
 
-	public void cloneBinaryRepository() throws GitException {
+	public void cloneBinaryRepository( boolean readonly ) throws GitException {
 
 		// find the name of the "source repository"
 		String srcRepoUrl = getSourceRemoteUrl();
@@ -617,7 +617,13 @@ public class ZeusManager {
 		String sourceRepoFolderName = f.getParentFile().getName();
 
 		// construct the binary repository URL
-		String giturl = "git@github.scm.corp.ebay.com:Binary/" + binaryRepoName + ".git";
+		String giturl;
+		if( readonly == true ){
+			giturl = "git://github.scm.corp.ebay.com/Binary/" + binaryRepoName + ".git";
+		}else{
+			giturl = "git@github.scm.corp.ebay.com:Binary/" + binaryRepoName + ".git";
+		}
+		
 
 		// calculate binary repository folder
 		File parent = f.getParentFile().getParentFile();
