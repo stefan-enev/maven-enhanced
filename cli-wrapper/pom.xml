@@ -111,7 +111,7 @@
 									<mainClass>com.ebay.maven.cli.CliWrapper</mainClass>
 								</transformer>
 							</transformers>
-							<finalName>maven-lightening</finalName>
+							<finalName>zeus</finalName>
 							<createSourcesJar>true</createSourcesJar>
 							<!--
 					<filters>
