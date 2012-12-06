@@ -612,7 +612,6 @@ public class ZeusManager {
 
 		// find where ".git" folder is found
 		File f = sourceRepository.getDirectory();
-		File sourceDir = f.getParentFile();
 
 		String sourceRepoFolderName = f.getParentFile().getName();
 
