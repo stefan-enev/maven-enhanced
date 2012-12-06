@@ -68,12 +68,9 @@ public class MavenUtil {
             ProcessExecutor mvnExecutor = new ProcessExecutor(sb.toString(), workdir, logger);
             
             // pass all the environment from parent shell
-            String m2_opts = System.getenv("MAVEN_OPTS");
-            if( m2_opts != null ){
-            	System.out.println("MAVEN_OPTS=" + m2_opts );
-            }
+          
             mvnExecutor.getEnvironment().putAll(System.getenv());
-            mvnExecutor.getEnvironment().put("MAVEN_OPTS", m2_opts);
+            //mvnExecutor.getEnvironment().put("MAVEN_OPTS", m2_opts);
 
             boolean result = false;
 
