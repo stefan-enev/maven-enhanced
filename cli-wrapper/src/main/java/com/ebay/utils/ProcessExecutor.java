@@ -116,11 +116,11 @@ public class ProcessExecutor {
 	
 	public boolean executeMaven() throws InterruptedException, IOException,CommonException{
 
-		Map<String,String> env =getEnvironment();
-        String mavenOpts = env.get("MAVEN_OPTS");
-        if( mavenOpts != null && !mavenOpts.trim().equals("")){
-            env.put("MAVEN_OPTS", "-DDUMMY");            
-        }
+//		Map<String,String> env =getEnvironment();
+//        String mavenOpts = env.get("MAVEN_OPTS");
+////        if( mavenOpts != null && !mavenOpts.trim().equals("")){
+////            env.put("MAVEN_OPTS", "-DDUMMY");            
+////        }
         
         return execute();
 	}
