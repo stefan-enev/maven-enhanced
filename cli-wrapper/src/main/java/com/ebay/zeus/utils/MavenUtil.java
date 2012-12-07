@@ -1,10 +1,10 @@
-package com.ebay.zeus.maven.utils;
+package com.ebay.zeus.utils;
 
 import java.io.File;
 import java.io.PrintStream;
 
-import com.ebay.zeus.utils.ProcessException;
-import com.ebay.zeus.utils.ProcessExecutor;
+import com.ebay.zeus.exceptions.ProcessException;
+import com.ebay.zeus.executor.ProcessExecutor;
 
 public class MavenUtil {
 	

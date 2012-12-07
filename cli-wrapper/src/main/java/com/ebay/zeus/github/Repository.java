@@ -1,4 +1,4 @@
-package com.ebay.zeus.github.client;
+package com.ebay.zeus.github;
 
 public class Repository {
 	/*

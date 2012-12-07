@@ -148,6 +148,29 @@ public class FileUtil {
 		}
 	}
 	
+    public static void copyBinaryFolders(String pattern, List<String> exclusionList, File source, File destination) throws IOException {
+        File root = source.getParentFile();
+        Collection<File> files = FileUtil.findDirectoriesThatEndWith(root, pattern);
+
+		FilenameFilter filter = new FilenameFilter() {
+			public boolean accept(File dir, String name) {
+				return true;
+			}
+		};
+
+        int pathlength = root.getCanonicalPath().length();
+        for (File f : files) {
+            // construct the directory to copied
+			if (f.getCanonicalPath().startsWith(root.getCanonicalPath())) {
+                // get the path that is additional
+				String pathfraction  = f.getCanonicalPath().substring(pathlength);
+                File d = new File(destination, pathfraction );
+                System.out.println( "copying " + f.getCanonicalPath() + " to " + d.getAbsolutePath() );
+				FileUtil.doCopyDirectory(f, d, filter, true, exclusionList);
+			}
+		}
+	}
+    
 	public static class FileFilter implements IOFileFilter{
 
 		public boolean accept(File file) {

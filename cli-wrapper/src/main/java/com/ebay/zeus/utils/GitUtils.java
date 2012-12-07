@@ -1,5 +1,6 @@
-package com.ebay.zeus.git.utils;
+package com.ebay.zeus.utils;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -12,6 +13,7 @@ import java.util.SortedMap;
 import org.eclipse.jgit.api.AddCommand;
 import org.eclipse.jgit.api.CommitCommand;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.InitCommand;
 import org.eclipse.jgit.api.LogCommand;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.StatusCommand;
@@ -28,10 +30,23 @@ import org.eclipse.jgit.util.RefMap;
 import org.kohsuke.github.GHUser;
 
 import com.ebay.zeus.exceptions.GitException;
-import com.ebay.zeus.github.client.GitHubClient;
+import com.ebay.zeus.github.GitHubClient;
 import com.google.common.base.Strings;
 
 public class GitUtils {
+	
+	public static Git initRepository(File repoRoot) throws GitException {
+		InitCommand initCmd = Git.init();
+		initCmd.setDirectory(repoRoot);
+		Git git = null;
+		try {
+			System.out.println("initializing bare repository");
+			git = initCmd.call();
+		} catch (GitAPIException e) {
+			throw new GitException("unable to initialize repository", e);
+		}
+		return git;
+	}
 	
 	public static String getRepositoryName( String repository ){
 		

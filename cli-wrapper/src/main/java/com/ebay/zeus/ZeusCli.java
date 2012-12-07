@@ -30,8 +30,9 @@ import com.ebay.zeus.cli.CliArgsParser;
 import com.ebay.zeus.cli.InputParams;
 import com.ebay.zeus.cli.RunMode;
 import com.ebay.zeus.exceptions.GitException;
-import com.ebay.zeus.exceptions.MapServiceException;
-import com.ebay.zeus.maven.utils.PomUtils;
+import com.ebay.zeus.repositorys.SourceZeusRepository;
+import com.ebay.zeus.utils.PomUtils;
+import com.ebay.zeus.utils.ZeusUtil;
 
 /**
  * <code>CliWrapper</code> prepares the workspace before maven kicks in.
@@ -52,13 +53,13 @@ import com.ebay.zeus.maven.utils.PomUtils;
  * 
  * @author nambi sankaran
  */
-public class Main {
+public class ZeusCli {
 
 	public static void main( String[] args ) throws ParseException{
 		
 		long begin = Calendar.getInstance().getTimeInMillis();
 		
-		Main wrapper = new Main();
+		ZeusCli wrapper = new ZeusCli();
 		InputParams input = wrapper.processCliArguments(args);
 		
 		wrapper.process(input);
@@ -85,19 +86,29 @@ public class Main {
 	public void process( InputParams input ){
 		
 		if( input.getMode().equals(RunMode.CREATE_UPDATE) ){
-			createOrUpdateBinaryRepository( input);
+			try {
+				createOrUpdateBinaryRepository( input);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		if( input.getMode().equals(RunMode.SETUP) ){
-			setupProject(input);
+			try {
+				setupProject(input);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 	
-
-	
-	public void createOrUpdateBinaryRepository( InputParams input ){
+	public void createOrUpdateBinaryRepository( InputParams input ) throws IOException{
 		
 		// assume the current directory the "root" of the project
 		File root = new File( System.getProperty("user.dir"));
+		SourceZeusRepository sourceRepository = new SourceZeusRepository(root);
+		
 		try {
 			
 			ZeusManager zmanager = new ZeusManager(root);
@@ -110,7 +121,7 @@ public class Main {
 			
 			while( true ){
 			
-				if (zmanager.isBinaryRepositoryAvailable()) {
+				if (ZeusUtil.isLocalBinaryRepositoryExisted(sourceRepository.getDirectory())) {
 					
 						// if previous run started in less then 1 minute before, wait for a minute
 						long begintime = Calendar.getInstance().getTimeInMillis();
@@ -149,7 +160,7 @@ public class Main {
 	
 				} else {
 					
-					if (zmanager.isRemoteBinaryRepositoryAvailable()) {
+					if (ZeusUtil.isRemoteBinaryRepositoryExisted(sourceRepository.getRemoteUrl())) {
 						
 						System.out.println("cloning binary repository....");
 						// clone binary repository
@@ -169,37 +180,29 @@ public class Main {
 				}
 			
 			}
-			
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (GitException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (MapServiceException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} 
+		} catch (Exception e){
+			//TODO: log it.
+		}
 	}
 	
-	public void setupProject(final InputParams input ) {
+	public void setupProject(final InputParams input ) throws IOException {
 		// TODO: download dependencies
 		
 		// read the source project
 		File root = new File( System.getProperty("user.dir"));
         // TODO: RGIROTI Remove next line at some point - refactor this to a test case somewhere
         // root = new File("D:\\dev\\devex\\binrepo-devex");
+		
+		SourceZeusRepository sourceRepository = new SourceZeusRepository(root);
+		
 		try {
 			ZeusManager repository = new ZeusManager(root);
             repository.setBaseServiceUrl(input.getMapSvcUrl());
 			
-			if( repository.isBinaryRepositoryAvailable() ){
+			if( ZeusUtil.isBinaryRepositoryExisted(sourceRepository) ){
 				repository.checkoutAndCopyFromBinaryRepository();
 				System.out.println("setup is complete");
-			}else if( repository.isRemoteBinaryRepositoryAvailable() ) {
+			}else if( ZeusUtil.isRemoteBinaryRepositoryExisted(sourceRepository.getRemoteUrl()) ) {
 				repository.cloneBinaryRepository(true);
 				System.out.println("setup is complete");
 			}else{

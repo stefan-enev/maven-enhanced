@@ -1,4 +1,4 @@
-package com.ebay.zeus.maven.utils;
+package com.ebay.zeus.utils;
 
 import java.io.BufferedReader;
 import java.io.File;

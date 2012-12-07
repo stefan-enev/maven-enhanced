@@ -1,4 +1,4 @@
-package com.ebay.zeus.github.client;
+package com.ebay.zeus.github;
 
 import org.kohsuke.github.GHOrganization;
 import org.kohsuke.github.GHRepository;

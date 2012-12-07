@@ -1,7 +1,7 @@
 package com.ebay.github.client;
 
-import com.ebay.zeus.git.utils.GitUtils;
-import com.ebay.zeus.github.client.GitHubClient;
+import com.ebay.zeus.github.GitHubClient;
+import com.ebay.zeus.utils.GitUtils;
 
 import org.eclipse.jgit.api.*;
 import org.eclipse.jgit.lib.*;

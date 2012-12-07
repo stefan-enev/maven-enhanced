@@ -1,4 +1,4 @@
-package com.ebay.zeus.utils;
+package com.ebay.zeus.exceptions;
 
 public class ProcessException  extends Exception {
 
