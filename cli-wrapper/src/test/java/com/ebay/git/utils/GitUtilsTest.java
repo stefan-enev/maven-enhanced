@@ -7,7 +7,8 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.junit.Test;
 
-import com.ebay.maven.binaryrepository.GitException;
+import com.ebay.zeus.exceptions.GitException;
+import com.ebay.zeus.git.utils.GitUtils;
 
 public class GitUtilsTest {
 	

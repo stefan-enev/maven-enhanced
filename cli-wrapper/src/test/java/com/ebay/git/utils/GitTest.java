@@ -14,7 +14,7 @@ import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.FetchResult;
 import org.junit.Test;
 
-import com.ebay.git.commands.ShowRef;
+import com.ebay.zeus.git.commands.ShowRef;
 
 public class GitTest {
 	

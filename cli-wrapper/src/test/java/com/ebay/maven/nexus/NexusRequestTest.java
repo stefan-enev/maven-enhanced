@@ -4,6 +4,8 @@ import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Repository;
 import org.junit.Test;
 
+import com.ebay.zeus.maven.nexus.NexusRequest;
+
 public class NexusRequestTest {
 	
 	@Test

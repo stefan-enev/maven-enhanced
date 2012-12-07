@@ -7,6 +7,10 @@ import java.util.List;
 
 import org.junit.Test;
 
+import com.ebay.zeus.ZeusManager;
+import com.ebay.zeus.exceptions.GitException;
+import com.ebay.zeus.exceptions.MapServiceException;
+
 public class ZeusManagerTest {
 	
 	@Test

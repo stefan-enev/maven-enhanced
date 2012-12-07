@@ -6,6 +6,8 @@ import org.apache.maven.model.Model;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.ebay.zeus.maven.utils.PomUtils;
+
 public class PomUtilsTest {
 	
 	@Test
