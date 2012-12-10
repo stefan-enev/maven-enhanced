@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.SortedMap;
 
 import org.eclipse.jgit.api.AddCommand;
+import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.CommitCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.InitCommand;
@@ -18,6 +19,8 @@ import org.eclipse.jgit.api.LogCommand;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.StatusCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.InvalidRemoteException;
+import org.eclipse.jgit.api.errors.TransportException;
 import org.eclipse.jgit.errors.NoWorkTreeException;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.Ref;
@@ -28,12 +31,16 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.util.RefMap;
 import org.kohsuke.github.GHUser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ebay.zeus.exceptions.GitException;
 import com.ebay.zeus.github.GitHubClient;
+import com.ebay.zeus.repositorys.BinaryZeusRepository;
 import com.google.common.base.Strings;
 
 public class GitUtils {
+	public final static Logger logger = LoggerFactory.getLogger(GitUtils.class);
 	
 	public static Git initRepository(File repoRoot) throws GitException {
 		InitCommand initCmd = Git.init();
@@ -46,6 +53,22 @@ public class GitUtils {
 			throw new GitException("unable to initialize repository", e);
 		}
 		return git;
+	}
+	
+	public static Git cloneRepository(String giturl, File binaryRepoFolder)
+			throws GitException {
+		CloneCommand cloneCmd = Git.cloneRepository();
+		cloneCmd.setURI(giturl);
+		cloneCmd.setDirectory(binaryRepoFolder);
+		cloneCmd.setCloneAllBranches(true);
+
+		try {
+			logger.debug("cloning repository " + giturl);
+			return cloneCmd.call();
+		} catch (Exception e) {
+			throw new GitException("unable to clone " + giturl, e);
+		} 
+		
 	}
 	
 	public static String getRepositoryName( String repository ){

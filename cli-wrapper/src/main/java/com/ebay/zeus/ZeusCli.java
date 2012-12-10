@@ -17,22 +17,16 @@
 package com.ebay.zeus;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Calendar;
-import java.util.List;
 
 import org.apache.commons.cli.ParseException;
-import org.apache.maven.model.Dependency;
-import org.apache.maven.model.Model;
-import org.apache.maven.model.Repository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ebay.zeus.cli.CliArgsParser;
 import com.ebay.zeus.cli.InputParams;
 import com.ebay.zeus.cli.RunMode;
 import com.ebay.zeus.exceptions.GitException;
-import com.ebay.zeus.repositorys.SourceZeusRepository;
-import com.ebay.zeus.utils.PomUtils;
-import com.ebay.zeus.utils.ZeusUtil;
 
 /**
  * <code>CliWrapper</code> prepares the workspace before maven kicks in.
@@ -51,10 +45,12 @@ import com.ebay.zeus.utils.ZeusUtil;
  * This will enable the developer to start coding in seconds. 
  * 
  * 
- * @author nambi sankaran
+ * @author nambi sankaran, yunfwang@ebay.com
  */
 public class ZeusCli {
 
+	public final Logger logger = LoggerFactory.getLogger(this.getClass());
+	
 	public static void main( String[] args ) throws ParseException{
 		
 		long begin = Calendar.getInstance().getTimeInMillis();
@@ -84,164 +80,21 @@ public class ZeusCli {
 	}
 	
 	public void process( InputParams input ){
-		
-		if( input.getMode().equals(RunMode.CREATE_UPDATE) ){
-			try {
-				createOrUpdateBinaryRepository( input);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		if( input.getMode().equals(RunMode.SETUP) ){
-			try {
-				setupProject(input);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-	}
-	
-	public void createOrUpdateBinaryRepository( InputParams input ) throws IOException{
-		
-		// assume the current directory the "root" of the project
-		File root = new File( System.getProperty("user.dir"));
-		SourceZeusRepository sourceRepository = new SourceZeusRepository(root);
-		
+		File root = new File(System.getProperty("user.dir"));
+		ZeusManager zmanager = null;
 		try {
-			
-			ZeusManager zmanager = new ZeusManager(root);
-			if( input.getMapSvcUrl() != null ){
-				zmanager.setBaseServiceUrl(input.getMapSvcUrl() );
-			}
-			
-			long starttime=0l;
-			long endtime = 0l;
-			
-			while( true ){
-			
-				if (ZeusUtil.isLocalBinaryRepositoryExisted(sourceRepository.getDirectory())) {
-					
-						// if previous run started in less then 1 minute before, wait for a minute
-						long begintime = Calendar.getInstance().getTimeInMillis();
-						if( ( begintime - starttime ) < (60*1000) ){
-							Thread.sleep(60*1000);
-						}
-						
-						// calculate start time
-						starttime = Calendar.getInstance().getTimeInMillis();
-						
-						// TODO: run 'show-ref' and keep the current status of src & bin repos in memory before doing a 'fetch'
-						
-						// TODO: ideally we need 'git fetch' and record what is fetched, which is then processed
-	
-						// TODO: calculate how many new branches/commits have been created since the last fetch on source repo
-						//zmanager.findNewCommits();
-						
-						// TODO: figure out the new commits and process each one of them
-						//zmanager.processNewCommits();
-	
-						// TODO: remove this after implementing above steps. this is temporary
-						// get the latest by "git pull" on "source" and "binary". 
-						zmanager.gitpull();
-						
-						// TODO: perform maven build. Remove this after implementing 'processNewCommits'
-						// even if it fails, continue the loop
-						zmanager.build("compile");
-						
-						// update binary repo
-		                zmanager.updateBinaryRepository();
-		                
-		                endtime = Calendar.getInstance().getTimeInMillis();
-		                
-		                System.out.println("Updated in " + ((endtime-starttime)/1000) + " seconds");
-					
-	
-				} else {
-					
-					if (ZeusUtil.isRemoteBinaryRepositoryExisted(sourceRepository.getRemoteUrl())) {
-						
-						System.out.println("cloning binary repository....");
-						// clone binary repository
-						zmanager.cloneBinaryRepository(false);
-						
-						System.out.println("binary repository cloned");
-					
-					} else {
-						
-						// calculate start time
-						starttime = Calendar.getInstance().getTimeInMillis();
-						zmanager.createBinaryRepository();
-						
-						endtime = Calendar.getInstance().getTimeInMillis();
-		                System.out.println("Created in " + ((endtime-starttime)/1000) + " seconds");
-					}                
-				}
-			
-			}
-		} catch (Exception e){
-			//TODO: log it.
-		}
-	}
-	
-	public void setupProject(final InputParams input ) throws IOException {
-		// TODO: download dependencies
-		
-		// read the source project
-		File root = new File( System.getProperty("user.dir"));
-        // TODO: RGIROTI Remove next line at some point - refactor this to a test case somewhere
-        // root = new File("D:\\dev\\devex\\binrepo-devex");
-		
-		SourceZeusRepository sourceRepository = new SourceZeusRepository(root);
-		
-		try {
-			ZeusManager repository = new ZeusManager(root);
-            repository.setBaseServiceUrl(input.getMapSvcUrl());
-			
-			if( ZeusUtil.isBinaryRepositoryExisted(sourceRepository) ){
-				repository.checkoutAndCopyFromBinaryRepository();
-				System.out.println("setup is complete");
-			}else if( ZeusUtil.isRemoteBinaryRepositoryExisted(sourceRepository.getRemoteUrl()) ) {
-				repository.cloneBinaryRepository(true);
-				System.out.println("setup is complete");
-			}else{
-				// TODO: anything we can do?
-				System.out.println("Binary repository not available. exiting...");
-			}
-			
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (GitException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		// Get the binary classes and populate project "target" folders
-	}
+			zmanager = new ZeusManager(root);
 
-	public void downloadDependencies(){
-		
-		// read the pom.xml
-		// TODO: get the pom.xml path from -f argument
-		Model model = PomUtils.readModel("pom.xml");
-		
-		// collect the repositories in the correct order
-		List<Repository> repositories= model.getRepositories();
-		
-		// collect the dependencies
-		List<Dependency> dependencies = model.getDependencies();
-		
-		System.out.println(repositories.toString() + dependencies.toString() );
-		// TODO: read the settings.xml to collect the repositories
-		
-		// construct the JSON request 
-		
-		// call nexus repository with JSON post
-		
-		// download the dependencies
-		
-		// invoke maven with dependencies
+			if (input.getMode().equals(RunMode.CREATE_UPDATE)) {
+				zmanager.createOrUpdateBinaryRepository(input.getMapSvcUrl());
+			}
+
+			if (input.getMode().equals(RunMode.SETUP)) {
+				zmanager.setupProject(input.getMapSvcUrl());
+			}
+		} catch (GitException e) {
+			logger.error(e.getMessage(), e);
+			return;
+		}
 	}
 }

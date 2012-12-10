@@ -1,6 +1,6 @@
 package com.ebay.zeus.exceptions;
 
-public class GitException extends Exception {
+public class GitException extends ZeusException {
 
 	private static final long serialVersionUID = -6877578368311715694L;
 	

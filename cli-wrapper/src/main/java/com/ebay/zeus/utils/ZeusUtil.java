@@ -64,8 +64,15 @@ public class ZeusUtil {
 	}
 	
 	public static boolean isLocalBinaryRepositoryExisted(File sourceRepoDir) {
-		boolean result = false;
-        // find where ".git" folder is found
+		File binaryRepoRoot = getBinaryRepositoryRoot(sourceRepoDir);
+		if (binaryRepoRoot == null){
+			return false;
+		}
+		
+		return true;
+	}
+	
+	public static File getBinaryRepositoryRoot(File sourceRepoDir) {
         
 		// repository foldername
 		String repositoryFolderName = sourceRepoDir.getParentFile().getName();
@@ -79,10 +86,10 @@ public class ZeusUtil {
             // check whether ".SourceRepo.git/.git" exists
 			File binGit = new File(binaryRepoFolder, ".git");
 			if( binGit.exists() && binGit.isDirectory() && binGit.canRead() ){
-				result = true;
+				return binaryRepoFolder;
 			}
 		}
-		return result;
+		return null;
 	}
 	
     public static boolean isRemoteBinaryRepositoryExisted(String sourceRepoUrl) throws GitException {
