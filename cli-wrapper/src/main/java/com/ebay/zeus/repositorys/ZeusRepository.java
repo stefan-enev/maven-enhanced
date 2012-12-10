@@ -2,31 +2,28 @@ package com.ebay.zeus.repositorys;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
 
 import org.eclipse.jgit.api.CheckoutCommand;
 import org.eclipse.jgit.api.CheckoutResult;
 import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.LogCommand;
 import org.eclipse.jgit.api.MergeResult.MergeStatus;
 import org.eclipse.jgit.api.PullResult;
-import org.eclipse.jgit.api.errors.CheckoutConflictException;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.api.errors.InvalidRefNameException;
-import org.eclipse.jgit.api.errors.NoHeadException;
-import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
-import org.eclipse.jgit.api.errors.RefNotFoundException;
-import org.eclipse.jgit.errors.AmbiguousObjectException;
-import org.eclipse.jgit.errors.IncorrectObjectTypeException;
-import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.RefComparator;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepository;
+import org.eclipse.jgit.util.RefMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,9 +118,57 @@ public class ZeusRepository extends FileRepository{
 		}
 	}
 	
-	//TODO
+	/**
+	 * get all branches
+	 * 
+	 * @return branch list
+	 */
 	public List<String> getAllBranches(){
-		return Collections.emptyList();
+		Iterable<Ref> refs;
+
+		// get the sorted refs
+		Map<String, Ref> all = this.getAllRefs();
+		if (all instanceof RefMap
+				|| (all instanceof SortedMap && ((SortedMap) all).comparator() == null)) {
+			refs = all.values();
+		} else {
+			refs = RefComparator.sort(all.values());
+		}
+
+		List<String> branches = new ArrayList<String>();
+		for (final Ref r : refs) {
+			String branch = this.shortenRefName(r.getName());
+
+			// ignore branches with name 'HEAD' or ""(not remote branch)
+			if (branch.endsWith("HEAD") || branch.startsWith("heads")
+					|| branch.startsWith(Constants.R_TAGS) || branch.equals("")) {
+				continue;
+			} else {
+				branches.add(branch);
+			}
+		}
+
+		return branches;
+	}
+	
+	/**
+	 * check whether specified branch existed or not.
+	 * 
+	 * @param branchName
+	 * @return existed or not
+	 */
+	public boolean isBranchExisted(String branchName){
+		boolean result = false;
+    	
+    	List<String> branches = getAllBranches();
+    	
+    	for( String b : branches ){
+    		if( b.contains(branchName)){
+    			result = true;
+    			break;
+    		}
+    	}
+    	return result;
 	}
 	
 	//TODO
@@ -192,34 +237,32 @@ public class ZeusRepository extends FileRepository{
 		
 	}
 	
-	//TODO
+	//TODO:
 	public List<RevCommit> getNewCommits(String branchName) throws GitException{
-		// get the history from binary repository
-		Git bingit = Git.wrap(this);
-		RevWalk binwalk = new RevWalk(this);
-		
-		Iterable<RevCommit> logs;
-		try {
-			logs = bingit.log().call();
-			Iterator<RevCommit> i = logs.iterator();
-			
-			while( i.hasNext() ){
-				RevCommit commit = binwalk.parseCommit(i.next() );
-				System.out.println( commit.getFullMessage() );
-			}
-			
-		} catch (NoHeadException e) {
-			throw new GitException(e);
-		} catch (GitAPIException e) {
-			throw new GitException(e);
-		} catch (MissingObjectException e) {
-			throw new GitException(e);
-		} catch (IncorrectObjectTypeException e) {
-			throw new GitException(e);
-		} catch (IOException e) {
-			throw new GitException(e);
+    	return Collections.emptyList();
+	}
+	
+	/**
+	 * get current branch's all commits
+	 * @return commit list
+	 * @throws GitException
+	 */
+	public List<RevCommit> getAllCommits() throws GitException{
+		LogCommand logCmd = git.log();
+    	
+    	try {
+    		List<RevCommit> commitList = new ArrayList<RevCommit>();
+    		
+    		Iterable<RevCommit> commits = logCmd.call();
+    		Iterator<RevCommit> iterator = commits.iterator();
+    		while(iterator.hasNext()){
+    			commitList.add(iterator.next());
+    		}
+    		
+    		return commitList;
+		} catch (Exception e) {
+			throw new GitException("", e);
 		}
-		return Collections.emptyList();
 	}
 	
 }

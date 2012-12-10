@@ -1,13 +1,7 @@
 package com.ebay.git.utils;
 
-import java.io.IOException;
-import java.util.List;
-
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.junit.Test;
 
-import com.ebay.zeus.exceptions.GitException;
 import com.ebay.zeus.utils.GitUtils;
 
 public class GitUtilsTest {
@@ -52,43 +46,5 @@ public class GitUtilsTest {
 		String org = GitUtils.getOrgName(repoUrlGitHttps);
 		System.out.println( "org for " + repoUrlGitHttps + " = " + org);
 	}
-	
-	@Test
-	public void getLastCommit(){
-		
-		FileRepositoryBuilder repobuiler = new FileRepositoryBuilder();
-		
-		try {
-			
-			Repository repository = repobuiler.findGitDir().build();
-			GitUtils.getLastCommit(repository);
-			
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (GitException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-	
-	@Test
-	public void listAllBranches(){
-		
-		FileRepositoryBuilder repobuiler = new FileRepositoryBuilder();
-		
-		try {
-			
-			Repository repository = repobuiler.findGitDir().build();
-			List<String> branches = GitUtils.getAllRemoteBranches(repository);
-			
-			for( String branch : branches ){
-				System.out.println(branch);
-			}
-			
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} 
-	}
+
 }

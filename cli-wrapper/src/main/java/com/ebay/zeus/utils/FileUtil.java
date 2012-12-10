@@ -296,4 +296,13 @@ public class FileUtil {
         }
     }
 
+    public static List<String> findExcludes(File rootDir, String pattern) throws IOException{
+		List<String> excludes = new ArrayList<String>();
+		Collection<File> excludeFiles = findDirectoriesThatEndWith(rootDir, pattern);
+		for( File file: excludeFiles ){
+			excludes.add( file.getCanonicalPath() );
+		}
+		
+		return excludes;
+	}
 }

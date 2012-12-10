@@ -1,21 +1,23 @@
 package com.ebay.github.client;
 
-import com.ebay.zeus.github.GitHubClient;
-import com.ebay.zeus.utils.GitUtils;
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
-import org.eclipse.jgit.api.*;
-import org.eclipse.jgit.lib.*;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.junit.Test;
-import org.kohsuke.github.*;
+import org.kohsuke.github.GHBranch;
+import org.kohsuke.github.GHCommit;
+import org.kohsuke.github.GHRepository;
+import org.kohsuke.github.GitHub;
+import org.kohsuke.github.PagedIterable;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import com.ebay.zeus.github.GitHubClient;
 
 public class GitHubClientTest {
 	
@@ -123,85 +125,85 @@ val headCommit: RevCommit = walk.parseCommit(head)
 
     }
 
-    // 2. Get branch/commit hash for the source repo - the actual source code
-    @Test
-    public void existsIn2() throws IOException {
-        final String repo = "binrepo-devex";
-        //  final String repo = "search_raptor_binary";
-        //String githubUrl = "https://github.scm.corp.ebay.com/api/v3";
-        //String accessToken = "1cf7d9792235b8592eda18bd7dcc2de37f99b3bc";
-
-        final String path = "D:\\dev\\devex\\.binrepo-devex\\.git";
-
-        File gitDir = new File(path);
-        org.eclipse.jgit.lib.Repository repository = new org.eclipse.jgit.storage.file.FileRepository(gitDir);
-        String branch = repository.getBranch();
-        System.out.println("Branch=" + branch);
-        final Map<String,Ref> allRefs = repository.getAllRefs();
-        for (String s : allRefs.keySet()) {
-            System.out.println("Here" + s);
-        }
-
-        RevWalk revWalk = new RevWalk(repository);
-        ObjectId resolve = repository.resolve(Constants.HEAD);
-        RevCommit commitRev = revWalk.parseCommit(resolve);
-        String commitHash = commitRev.getName();
-        System.out.println(commitHash +  "\t" + commitRev.getFullMessage());
-
-        Git binaryRepo = Git.open(gitDir);
-
-        final ListBranchCommand listBranchCommand = binaryRepo.branchList();
-        System.out.println(listBranchCommand.getRepository().getFullBranch());
-        // get "status"
-        final StatusCommand statusCommand = binaryRepo.status();
-        Collection<String> toadd = GitUtils.getFilesToStage(statusCommand);
-        for (String s : toadd) {
-            System.out.println("To be added:" + s);
-        }
-
-        // add files to "staging"
-        if( toadd.size() > 0 ){
-            AddCommand addCmd = binaryRepo.add();
-            for( String file : toadd ){
-                addCmd.addFilepattern(file);
-            }
-
-            try {
-                addCmd.call();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
-        final StoredConfig config = repository.getConfig();
-        String url = config.getString("remote", "origin", "url");
-        if (url != null) {
-            System.out.println("Origin comes from " + url);
-        }
-
-        // commit
-        final CommitCommand commit = binaryRepo.commit();
-        String msg = "Saving Repo:%s Branch:%s CommitHash:%s Time:%s";
-        final String formattedMsg = String.format(msg, repo, branch, commitHash, new Date().toString());
-        commit.setMessage(formattedMsg);
-        try {
-            commit.call();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        // push to origin now
-        final PushCommand push = binaryRepo.push();
-        final String remote = push.getRemote();
-        System.out.println("Remote to push to:'" + remote + "'");
-        try {
-           push.call();
-        } catch (Exception e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-        }
-
-
-    }
+//    // 2. Get branch/commit hash for the source repo - the actual source code
+//    @Test
+//    public void existsIn2() throws IOException {
+//        final String repo = "binrepo-devex";
+//        //  final String repo = "search_raptor_binary";
+//        //String githubUrl = "https://github.scm.corp.ebay.com/api/v3";
+//        //String accessToken = "1cf7d9792235b8592eda18bd7dcc2de37f99b3bc";
+//
+//        final String path = "D:\\dev\\devex\\.binrepo-devex\\.git";
+//
+//        File gitDir = new File(path);
+//        org.eclipse.jgit.lib.Repository repository = new org.eclipse.jgit.storage.file.FileRepository(gitDir);
+//        String branch = repository.getBranch();
+//        System.out.println("Branch=" + branch);
+//        final Map<String,Ref> allRefs = repository.getAllRefs();
+//        for (String s : allRefs.keySet()) {
+//            System.out.println("Here" + s);
+//        }
+//
+//        RevWalk revWalk = new RevWalk(repository);
+//        ObjectId resolve = repository.resolve(Constants.HEAD);
+//        RevCommit commitRev = revWalk.parseCommit(resolve);
+//        String commitHash = commitRev.getName();
+//        System.out.println(commitHash +  "\t" + commitRev.getFullMessage());
+//
+//        Git binaryRepo = Git.open(gitDir);
+//
+//        final ListBranchCommand listBranchCommand = binaryRepo.branchList();
+//        System.out.println(listBranchCommand.getRepository().getFullBranch());
+//        // get "status"
+//        final StatusCommand statusCommand = binaryRepo.status();
+//        Collection<String> toadd = GitUtils.getFilesToStage(statusCommand);
+//        for (String s : toadd) {
+//            System.out.println("To be added:" + s);
+//        }
+//
+//        // add files to "staging"
+//        if( toadd.size() > 0 ){
+//            AddCommand addCmd = binaryRepo.add();
+//            for( String file : toadd ){
+//                addCmd.addFilepattern(file);
+//            }
+//
+//            try {
+//                addCmd.call();
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//        }
+//
+//        final StoredConfig config = repository.getConfig();
+//        String url = config.getString("remote", "origin", "url");
+//        if (url != null) {
+//            System.out.println("Origin comes from " + url);
+//        }
+//
+//        // commit
+//        final CommitCommand commit = binaryRepo.commit();
+//        String msg = "Saving Repo:%s Branch:%s CommitHash:%s Time:%s";
+//        final String formattedMsg = String.format(msg, repo, branch, commitHash, new Date().toString());
+//        commit.setMessage(formattedMsg);
+//        try {
+//            commit.call();
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//
+//        // push to origin now
+//        final PushCommand push = binaryRepo.push();
+//        final String remote = push.getRemote();
+//        System.out.println("Remote to push to:'" + remote + "'");
+//        try {
+//           push.call();
+//        } catch (Exception e) {
+//            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+//        }
+//
+//
+//    }
 
     @Test
     public void testRemote() throws Exception {

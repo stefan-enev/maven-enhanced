@@ -3,6 +3,7 @@ package com.ebay.zeus.repositorys;
 import java.io.File;
 import java.io.IOException;
 
+import org.eclipse.jgit.api.CheckoutResult;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileBasedConfig;
 
@@ -68,6 +69,12 @@ public class BinaryZeusRepository extends ZeusRepository{
 		}
 	}
 	
+	public void commitNDPushAll(String commitHash) throws GitException{
+		addAll();
+        commit(commitHash);
+        push();
+	}
+	
 	/**
 	 * create branch with specified branch name.
 	 * 
@@ -88,9 +95,16 @@ public class BinaryZeusRepository extends ZeusRepository{
 	 * @param branchName
 	 * @throws GitException
 	 */
-	public void createNDCheckoutBranch(String branchName) throws GitException{
+	public CheckoutResult checkoutNewBranch(String branchName) throws GitException{
 		this.createBranch(branchName);
-		this.checkoutBranch(branchName);
+		CheckoutResult result = this.checkoutBranch(branchName);
+
+		this.addRemoteBranch(branchName);
+
+		// push this branch to remote
+		this.push();
+		
+		return result;
 	}
 	
 	/**
