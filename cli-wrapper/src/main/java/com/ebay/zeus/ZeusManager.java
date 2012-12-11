@@ -12,8 +12,8 @@ import org.slf4j.LoggerFactory;
 
 import com.ebay.zeus.exceptions.GitException;
 import com.ebay.zeus.mappingservice.MappingServiceClient;
-import com.ebay.zeus.repositorys.BinaryZeusRepository;
-import com.ebay.zeus.repositorys.SourceZeusRepository;
+import com.ebay.zeus.repository.BinaryZeusRepository;
+import com.ebay.zeus.repository.SourceZeusRepository;
 import com.ebay.zeus.utils.FileUtil;
 import com.ebay.zeus.utils.GitUtils;
 import com.ebay.zeus.utils.MavenUtil;
@@ -50,12 +50,12 @@ public class ZeusManager {
 	
 	private void initialize() throws GitException{
 		try {
-			this.sourceRepository = new SourceZeusRepository(root);
+			this.sourceRepository = new SourceZeusRepository(new File(root, ".git"));
 			File sourceRepoRoot = sourceRepository.getDirectory();
 
 			if (ZeusUtil.isLocalBinaryRepositoryExisted(sourceRepoRoot)) {
-				File BinaryRepoRoot = ZeusUtil.getBinaryRepositoryRoot(sourceRepoRoot);
-				this.binaryRepository = new BinaryZeusRepository(BinaryRepoRoot);
+				File binaryRepoRoot = ZeusUtil.getBinaryRepositoryRoot(sourceRepoRoot);
+				this.binaryRepository = new BinaryZeusRepository(new File(binaryRepoRoot, ".git"));
 
 				isLocalBinaryRepoExisted = true;
 			}
@@ -265,9 +265,10 @@ public class ZeusManager {
         // TODO: check whether the remote exists, if not create it, else fail
         ZeusUtil.createRemoteRepository(binRemoteUrl);
 
-        binaryRepository = new BinaryZeusRepository(binaryRepoRoot);
+        binaryRepository = new BinaryZeusRepository(new File(binaryRepoRoot, ".git"));
         // add "remote" repository
         binaryRepository.addRemoteUrl(binRemoteUrl);
+        binaryRepository.addRemoteBranch("master");
 
 		// addall/commit/push
         binaryRepository.commitNDPushAll("add readme");

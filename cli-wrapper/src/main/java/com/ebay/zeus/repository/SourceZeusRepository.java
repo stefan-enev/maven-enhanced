@@ -1,4 +1,4 @@
-package com.ebay.zeus.repositorys;
+package com.ebay.zeus.repository;
 
 import java.io.File;
 import java.io.IOException;

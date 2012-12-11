@@ -11,7 +11,7 @@ import org.kohsuke.github.GitHub;
 
 import com.ebay.zeus.exceptions.GitException;
 import com.ebay.zeus.github.GitHubClient;
-import com.ebay.zeus.repositorys.SourceZeusRepository;
+import com.ebay.zeus.repository.SourceZeusRepository;
 
 public class ZeusUtil {
 

@@ -1,9 +1,10 @@
-package com.ebay.zeus.repositorys;
+package com.ebay.zeus.repository;
 
 import java.io.File;
 import java.io.IOException;
 
 import org.eclipse.jgit.api.CheckoutResult;
+import org.eclipse.jgit.api.ResetCommand.ResetType;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileBasedConfig;
 
@@ -61,18 +62,34 @@ public class BinaryZeusRepository extends ZeusRepository{
 	 * 
 	 * @throws GitException
 	 */
-	public void push() throws GitException{
+	public void push(boolean force) throws GitException{
 		try {
-			git.push().setPushAll().call();
+			git.push().setPushAll().setForce(force).call();
 		} catch (Exception e) {
 			throw new GitException("fail to push changes to repository:"+this.getRemoteUrl(), e);
 		}
 	}
 	
-	public void commitNDPushAll(String commitHash) throws GitException{
+	/**
+	 * by now it's only for test.
+	 * 
+	 * @param commitHash
+	 * @throws GitException
+	 */
+	public void reset(String commitHash) throws GitException{
+		try {
+			git.reset().setMode(ResetType.HARD).setRef(commitHash).call();
+		} catch (Exception e) {
+			throw new GitException("fail to reset commit:"+commitHash+" to repository:"+this.getDirectory().getParent(), e);
+		}
+	}
+	
+	public RevCommit commitNDPushAll(String commitHash) throws GitException{
 		addAll();
-        commit(commitHash);
-        push();
+        RevCommit commit = commit(commitHash);
+        push(false);
+        
+        return commit;
 	}
 	
 	/**
@@ -102,7 +119,7 @@ public class BinaryZeusRepository extends ZeusRepository{
 		this.addRemoteBranch(branchName);
 
 		// push this branch to remote
-		this.push();
+		this.push(false);
 		
 		return result;
 	}
@@ -115,6 +132,8 @@ public class BinaryZeusRepository extends ZeusRepository{
 	 */
 	public void addRemoteUrl(String remoteUrl) throws GitException{
 		this.getConfig().setString("remote", "origin", "url", remoteUrl);
+		this.getConfig().setString("remote", "origin", "fetch", "+refs/heads/*:refs/remotes/origin/*");
+		
         try {
 			this.getConfig().save();
 		} catch (IOException e) {

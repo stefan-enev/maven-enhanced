@@ -1,4 +1,4 @@
-package com.ebay.zeus.repositorys;
+package com.ebay.zeus.repository;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,12 +16,12 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.LogCommand;
 import org.eclipse.jgit.api.MergeResult.MergeStatus;
 import org.eclipse.jgit.api.PullResult;
+import org.eclipse.jgit.api.errors.TransportException;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.RefComparator;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepository;
 import org.eclipse.jgit.util.RefMap;
 import org.slf4j.Logger;
@@ -48,14 +48,22 @@ import com.ebay.zeus.utils.GitUtils;
 public class ZeusRepository extends FileRepository{
 
 	public final Logger logger = LoggerFactory.getLogger(this.getClass());
-	public Git git = Git.wrap(this);
+	public Git git;
 	
 	public ZeusRepository(File gitDir) throws IOException {
 		super(gitDir);
+		git = Git.wrap(this);
+
+		git.open(gitDir);
 	}
 	
 	public String getName(){
 		String remoteUrl = this.getConfig().getString("remote", "origin", "url");
+		
+		if (remoteUrl==null){
+			return null;
+		}
+		
 		String repository = GitUtils.getRepositoryName(remoteUrl);
 		return repository;
 	}
@@ -72,11 +80,11 @@ public class ZeusRepository extends FileRepository{
 	 */
 	public void pull() throws GitException{
 		
-		Git srcgit = Git.wrap(this);
+//		Git srcgit = Git.wrap(this);
 		
 		try {
 			
-			PullResult pullResult = srcgit.pull().call();
+			PullResult pullResult = git.pull().call();
 			
 			if( pullResult.isSuccessful()){
 
@@ -86,15 +94,22 @@ public class ZeusRepository extends FileRepository{
 //					result = true;
 //				}
 				if( pullResult.getMergeResult() != null && 
-						(pullResult.getMergeResult().getMergeStatus() != MergeStatus.FAST_FORWARD ||
-						pullResult.getMergeResult().getMergeStatus() != MergeStatus.MERGED )){
+						pullResult.getMergeResult().getMergeStatus() != MergeStatus.FAST_FORWARD &&
+						pullResult.getMergeResult().getMergeStatus() != MergeStatus.MERGED &&
+						pullResult.getMergeResult().getMergeStatus() != MergeStatus.ALREADY_UP_TO_DATE){
 					throw new Exception("can't merge changes successfully.");
 				}
 				
 				// TODO: rebase status needs to be checked but it is ignored for now
 			}
 			
-		} catch (Exception e) {
+		} catch (TransportException e) {
+			//ignore, if noting to fetch.
+			if (e.getMessage().equals("Nothing to fetch.")){
+				return;
+			}
+			throw new GitException(e);
+		} catch (Exception e){
 			throw new GitException(e);
 		}
 	}
@@ -107,12 +122,14 @@ public class ZeusRepository extends FileRepository{
 	 */
 	public String getHead() throws GitException{
         
-        final RevWalk revWalk = new RevWalk(this);
-        ObjectId resolve;
+        ObjectId head;
 		try {
-			resolve = this.resolve(Constants.HEAD);
-			final RevCommit commitRev = revWalk.parseCommit(resolve);
-	        return commitRev.getName();
+			head = this.resolve(Constants.HEAD);
+			
+			if (head==null)
+				return "";
+			
+	        return head.getName();
 		} catch (Exception e) {
 			throw new GitException("unable to get HEAD for repository:" + this.getDirectory(), e);
 		}
@@ -188,7 +205,7 @@ public class ZeusRepository extends FileRepository{
 		Ref ref;
 		try {
 			ref = checkoutCmd.setName(branchName).call();
-			System.out.println("checkout is complete" );
+			logger.info("checkout is complete");
 			if( ref != null ){
 				//System.out.println("ref " + ref.getName() );
 				return checkoutCmd.getResult();

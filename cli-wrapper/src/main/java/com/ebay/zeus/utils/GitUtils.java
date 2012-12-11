@@ -29,7 +29,9 @@ public class GitUtils {
 			initCmd.setDirectory(repoRoot);
 			
 			logger.info("initializing bare repository");
-			return initCmd.call();
+			Git git = initCmd.call();
+//			git.open(repoRoot);
+			return git;
 		} catch (Exception e) {
 			throw new GitException("unable to initialize repository", e);
 		}
