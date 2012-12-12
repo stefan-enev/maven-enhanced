@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.Calendar;
 import java.util.List;
 
-import org.eclipse.jgit.api.CheckoutResult;
 import org.eclipse.jgit.api.Git;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +64,7 @@ public class ZeusManager {
 			
 			srcRepoRoot = sourceRepository.getDirectory().getParentFile();
 			
-			this.mappingServiceClient = new MappingServiceClient();
+			mappingServiceClient = new MappingServiceClient();
 			logger.info("initialized basic information.");
 		} catch (IOException e) {
 			throw new GitException("Fail to initialize source repository or binary repository.", e);
@@ -427,8 +426,6 @@ public class ZeusManager {
 		// check whether the branch exists
 		boolean isBranchExisted = binaryRepository.isBranchExisted(branchName);
 		
-		CheckoutResult result =null;
-		
 		if( !isBranchExisted ){
 			binaryRepository.checkoutNewBranch(branchName);
 		}else{
@@ -442,12 +439,7 @@ public class ZeusManager {
 			}
 		}
 		
-		if( result != null && result.getStatus().equals(CheckoutResult.OK_RESULT)){
-			logger.info("checkout is OK");
-		}else{
-			// TODO: handle the error.
-			throw new GitException("Fail to checkout binary repository's branch:"+branchName);
-		}
+		throw new GitException("Fail to checkout binary repository's branch:"+branchName);
 	}
 
 	/**
