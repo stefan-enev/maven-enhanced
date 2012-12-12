@@ -8,13 +8,16 @@ import java.util.List;
 import org.kohsuke.github.GHOrganization;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ebay.zeus.exceptions.GitException;
 import com.ebay.zeus.github.GitHubClient;
 import com.ebay.zeus.repository.SourceZeusRepository;
 
 public class ZeusUtil {
-
+	public final static Logger logger = LoggerFactory.getLogger(ZeusUtil.class);
+	
     public static void createReadMeFile(final File binaryRepoFolder, String sourceRepoUrl) throws IOException {
         // add a "README.md" file and commit
         final File readmeFile = new File(binaryRepoFolder, "README.md");
@@ -33,38 +36,45 @@ public class ZeusUtil {
         GHRepository repository = githubOrg.getRepository( GitUtils.getRepositoryName(remoteUrl) );
 
         if (repository == null ) {
-			
-        	System.out.println("creating remote repository : " + remoteUrl );
+        	logger.info("creating remote repository : " + remoteUrl);
+        	
             GHRepository repo = githubOrg.createRepository(GitUtils.getRepositoryName(remoteUrl), 
             												"Binary repository", 
             												"https://github.scm.corp.ebay.com", 
             												"Owners", 
             												true);
             
-            System.out.println( repo.getUrl() + " created successfully ");
-            
+            logger.info(repo.getUrl() + " created successfully ");
         } else {
             // fail, it shouldn't come here
         }
 	}
 	
-	public static boolean isBinaryRepositoryExisted(SourceZeusRepository sourceRepository){
-		
+	/**
+	 * check whether local & remote repository existed or not.
+	 * 
+	 * @param sourceRepository
+	 * @return
+	 * @throws GitException
+	 */
+	public static boolean isBinaryRepositoryExisted(SourceZeusRepository sourceRepository) throws GitException{
         boolean result = ZeusUtil.isLocalBinaryRepositoryExisted(sourceRepository.getDirectory());
 		
 		// return result && isRepoPresentInGit();
         boolean remoteRepoCheck = false;
-        try {
-            remoteRepoCheck = ZeusUtil.isRemoteBinaryRepositoryExisted(sourceRepository.getRemoteUrl());
-        } catch (GitException e) {
-            e.printStackTrace();
-        }
+        remoteRepoCheck = isRemoteBinaryRepositoryExisted(sourceRepository.getRemoteUrl());
         
         return result && remoteRepoCheck;
 	}
 	
+	/**
+	 * whether local binary repository existed according to source repository 
+	 * 
+	 * @param sourceRepoDir
+	 * @return
+	 */
 	public static boolean isLocalBinaryRepositoryExisted(File sourceRepoDir) {
-		File binaryRepoRoot = getBinaryRepositoryRoot(sourceRepoDir);
+		File binaryRepoRoot = getExistedBinaryRepositoryRoot(sourceRepoDir);
 		if (binaryRepoRoot == null){
 			return false;
 		}
@@ -72,26 +82,54 @@ public class ZeusUtil {
 		return true;
 	}
 	
-	public static File getBinaryRepositoryRoot(File sourceRepoDir) {
+	/**
+	 * get binary repository's root according to source repository's root
+	 * if not existed in disk, return null.
+	 * 
+	 * @param sourceRepoDir
+	 * @return
+	 */
+	public static File getExistedBinaryRepositoryRoot(File sourceRepoDir) {
         
-		// repository foldername
-		String repositoryFolderName = sourceRepoDir.getParentFile().getName();
-        
-		// go to parent directory
-		File parent = sourceRepoDir.getParentFile().getParentFile();
-		File binaryRepoFolder = new File( parent , ( "." + repositoryFolderName) );
+		File binaryRepoFolder = getBinaryRepositoryRoot(sourceRepoDir);
 		
         // check whether ".SourceRepo.git" folder exists
 		if (binaryRepoFolder.exists() && binaryRepoFolder.isDirectory() && binaryRepoFolder.canRead()) {
             // check whether ".SourceRepo.git/.git" exists
 			File binGit = new File(binaryRepoFolder, ".git");
 			if( binGit.exists() && binGit.isDirectory() && binGit.canRead() ){
+				logger.debug("binary repository existed:"+binaryRepoFolder.getAbsolutePath());
 				return binaryRepoFolder;
 			}
 		}
+		
 		return null;
 	}
 	
+	/**
+	 * simply get binary repository's root according to source repository's root.
+	 * won't do any check.
+	 * 
+	 * @param sourceRepoDir
+	 * @return
+	 */
+	public static File getBinaryRepositoryRoot(File sourceRepoDir) {
+		// repository foldername
+		String repositoryFolderName = sourceRepoDir.getName();
+        
+		// go to parent directory
+		File parent = sourceRepoDir.getParentFile();
+		return new File( parent , ( "." + repositoryFolderName) );
+	}
+	
+	/**
+	 * check whether remote binary repository existed according to source repository url.
+	 * it will use GitHub API to do this check.
+	 * 
+	 * @param sourceRepoUrl
+	 * @return
+	 * @throws GitException
+	 */
     public static boolean isRemoteBinaryRepositoryExisted(String sourceRepoUrl) throws GitException {
         boolean result = false;
 		
@@ -121,6 +159,12 @@ public class ZeusUtil {
     	return org + "_" + repoName + "_binary";
     }
     
+    /**
+     * get binary repository's url by source repository's remote url.
+     * 
+     * @param srcRemoteUrl
+     * @return
+     */
     public static String calculateBinaryRepositoryUrl(String srcRemoteUrl){
     	String remoteUrl=null;
     	String srcUrl = srcRemoteUrl;

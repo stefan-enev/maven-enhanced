@@ -50,18 +50,22 @@ public class ZeusManager {
 	
 	private void initialize() throws GitException{
 		try {
+			logger.info("initializing basic information...");
+			
 			this.sourceRepository = new SourceZeusRepository(new File(root, ".git"));
 			File sourceRepoRoot = sourceRepository.getDirectory();
 
 			if (ZeusUtil.isLocalBinaryRepositoryExisted(sourceRepoRoot)) {
-				File binaryRepoRoot = ZeusUtil.getBinaryRepositoryRoot(sourceRepoRoot);
+				File binaryRepoRoot = ZeusUtil.getExistedBinaryRepositoryRoot(sourceRepoRoot);
 				this.binaryRepository = new BinaryZeusRepository(new File(binaryRepoRoot, ".git"));
 
 				isLocalBinaryRepoExisted = true;
 			}
 			
 			srcRepoRoot = sourceRepository.getDirectory().getParentFile();
-	        
+			
+			this.mappingServiceClient = new MappingServiceClient();
+			logger.info("initialized basic information.");
 		} catch (IOException e) {
 			throw new GitException("Fail to initialize source repository or binary repository.", e);
 		}
@@ -70,6 +74,8 @@ public class ZeusManager {
 	public void createOrUpdateBinaryRepository(String mapSvcUrl)
 			throws GitException {
 
+		logger.info("starting to create/update binary repository");
+		
 		// assume the current directory the "root" of the project
 		try {
 
@@ -79,48 +85,52 @@ public class ZeusManager {
 
 			long starttime = 0l;
 			long endtime = 0l;
-			
-			//FIXME: why use dead loop?!!!!
-			while (true) {
 
-				if (isLocalBinaryRepoExisted) {
-					// if previous run started in less then 1 minute before,
-					// wait for a minute
-					long begintime = Calendar.getInstance().getTimeInMillis();
-					if ((begintime - starttime) < (60 * 1000)) {
-						Thread.sleep(60 * 1000);
-					}
-
-					// calculate start time
-					starttime = Calendar.getInstance().getTimeInMillis();
-					
-					updateExistedLocalBinaryRepository();
-
-					endtime = Calendar.getInstance().getTimeInMillis();
-					logger.info("Updated in " + ((endtime - starttime) / 1000) + " seconds");
-				} else {
-
-					if (ZeusUtil.isRemoteBinaryRepositoryExisted(sourceRepository.getRemoteUrl())) {
-						cloneBinaryRepository(false);
-						
-						//TODO: 1. if branch existed, checkout it, if no, should checkout new local branch
-						//      2. Then copy source repo's classes into binary repo and upload changes
-						checkoutBinaryBranch();
-						updateBinaryRepository();
-					} else {
-						// calculate start time
-						starttime = Calendar.getInstance().getTimeInMillis();
-						createBinaryRepository();
-
-						endtime = Calendar.getInstance().getTimeInMillis();
-						logger.info("Created in " + ((endtime - starttime) / 1000) + " seconds");
-					}
+			if (isLocalBinaryRepoExisted) {
+				logger.info("local binary repository existed, update it with source repo's classes.");
+				
+				// if previous run started in less then 1 minute before,
+				// wait for a minute
+				long begintime = Calendar.getInstance().getTimeInMillis();
+				if ((begintime - starttime) < (60 * 1000)) {
+					Thread.sleep(60 * 1000);
 				}
 
+				// calculate start time
+				starttime = Calendar.getInstance().getTimeInMillis();
+
+				updateExistedLocalBinaryRepository();
+
+				endtime = Calendar.getInstance().getTimeInMillis();
+				logger.info("Updated in " + ((endtime - starttime) / 1000) + " seconds");
+			} else {
+				logger.info("local binary repository not existed.");
+				if (ZeusUtil.isRemoteBinaryRepositoryExisted(sourceRepository.getRemoteUrl())) {
+					logger.info("remote binary repository existed.");
+					cloneBinaryRepository(false);
+
+					// TODO: 1. if branch existed, checkout it, if no, should
+					// checkout new local branch
+					// 2. Then copy source repo's classes into binary repo and
+					// upload changes
+					checkoutBinaryBranch();
+					updateBinaryRepository();
+				} else {
+					logger.info("remote binary repository not existed, create it.");
+					// calculate start time
+					starttime = Calendar.getInstance().getTimeInMillis();
+					createBinaryRepository();
+
+					endtime = Calendar.getInstance().getTimeInMillis();
+					logger.info("Created in " + ((endtime - starttime) / 1000) + " seconds");
+				}
 			}
+
 		} catch (Exception e) {
 			throw new GitException("Fail to create/update binary repository.", e);
 		}
+		
+		logger.info("created/updated binary repository");
 	}
 	
 	/**
@@ -136,6 +146,7 @@ public class ZeusManager {
 	 * @throws Exception
 	 */
 	private void updateExistedLocalBinaryRepository() throws Exception{
+		logger.info("Updating existed binary repository...");
 		// TODO: run 'show-ref' and keep the current status of src &
 		// bin repos in memory before doing a 'fetch'
 
@@ -163,6 +174,8 @@ public class ZeusManager {
 
 		// update binary repo
 		updateBinaryRepository();
+		
+		logger.info("Updated existed binary repository");
 	}
 	
 	public void setupProject(String mapSvcUrl) throws GitException {
@@ -210,8 +223,12 @@ public class ZeusManager {
 	 * @throws GitException 
 	 */
 	private void gitpull() throws GitException{
+		logger.info("Pulling source repository & binary repository...");
+		
 		sourceRepository.pull();
 		binaryRepository.pull();
+		
+		logger.info("Pulled source repository & binary repository.");
 	}
 
 	/**
@@ -290,6 +307,8 @@ public class ZeusManager {
 	 */
 	private void addSrcRepoClassesToBinRepo(File binaryRepoRoot)
 			throws IOException, GitException {
+		logger.info("adding classes from source repository to binary repository...");
+		
 		// read the branch from "source" repository
 		String branchname = sourceRepository.getBranch();
 
@@ -318,13 +337,16 @@ public class ZeusManager {
 	 * @throws Exception
 	 */
 	private void uploadMappingData(String sourceRepoUrl, String binRepoUrl, String branchname) throws Exception {
+		
 		final String sourceRepoHeadHash = sourceRepository.getHead();
 		final String binRepoHeadHash = binaryRepository.getHead();
         final String binRepoBranchName = binaryRepository.getBranch();
 
-        logger.info("Update Bin Repo Service with the new changes - POST new object to service");
+        logger.info("Updating Bin Repo Service with the new changes - POST new object to service");
         
    	    mappingServiceClient.post(sourceRepoUrl, branchname, sourceRepoHeadHash, binRepoUrl, binRepoBranchName, binRepoHeadHash);
+   	    
+   	    logger.info("Updated Bin Repo Service with the new changes");
 	}
 
 	/**
@@ -351,8 +373,10 @@ public class ZeusManager {
 		}
 
 		// calculate binary repository folder
-		File binaryRepoFolder = ZeusUtil.getBinaryRepositoryRoot(srcRepoRoot);
+		File binaryRepoFolder = ZeusUtil.getExistedBinaryRepositoryRoot(srcRepoRoot);
 
+		logger.debug("gitUrl:"+giturl+"\n"+"binary repo root:"+binaryRepoFolder.getAbsolutePath());
+		
 		// clone the binary repository
 		Git binGit = GitUtils.cloneRepository(giturl, binaryRepoFolder);
 		try {
@@ -370,6 +394,8 @@ public class ZeusManager {
 	 * @throws GitException
 	 */
 	private void checkoutBinaryBranch() throws GitException{
+		logger.info("Checking out binary branch...");
+		
 		// read the branch from "source" repository
 		String branchName = null;
 		try {
@@ -382,6 +408,8 @@ public class ZeusManager {
 		if (!branchName.toLowerCase().equals("master")) {
 			checkoutBinaryBranch(branchName);
 		}
+		
+		logger.info("Checked out branch:"+branchName+ " successfully.");
 	}
 	
 	/**
@@ -393,6 +421,8 @@ public class ZeusManager {
 	 * @throws GitException
 	 */
 	private void checkoutBinaryBranch(String branchName) throws GitException {
+		logger.info("checking out binary repository's branch:"+branchName+"...");
+		
 		// check whether the branch exists
 		boolean isBranchExisted = binaryRepository.isBranchExisted(branchName);
 		
@@ -401,7 +431,6 @@ public class ZeusManager {
 		if( !isBranchExisted ){
 			binaryRepository.checkoutNewBranch(branchName);
 		}else{
-			
 			// check the current branch in binary repository
 			try {
 				if( !binaryRepository.getBranch().equals(branchName) ){
@@ -410,7 +439,6 @@ public class ZeusManager {
 			} catch (IOException e) {
 				throw new GitException("can't checkout remote branch("+branchName+") into local.", e);
 			}
-
 		}
 		
 		if( result != null && result.getStatus().equals(CheckoutResult.OK_RESULT)){
@@ -439,7 +467,7 @@ public class ZeusManager {
         // 1. Check if repository exists remotely git@github.scm.corp.ebay.com/Binary/Repo_Binary.git
         final String repoUrl = sourceRepository.getRemoteUrl();
 
-        final File binRepoRoot = ZeusUtil.getBinaryRepositoryRoot(srcRepoRoot);
+        final File binRepoRoot = ZeusUtil.getExistedBinaryRepositoryRoot(srcRepoRoot);
         
         logger.info("SourceRepository = " + srcRepoRoot.getCanonicalPath() + "\nBinaryRepository = " + binRepoRoot.getCanonicalPath());
 
@@ -453,7 +481,9 @@ public class ZeusManager {
 			logger.info("Source Directory:'" + srcRepoRoot.getCanonicalPath()
 					+ "' Destination Directory:'"
 					+ binRepoRoot.getCanonicalPath() + "'");
-			
+			logger.debug("mapping service hasn't its entry, start to copy classes from source repo to binary repo...");
+			logger.debug("source repo root:"+srcRepoRoot.getAbsolutePath());
+			logger.debug("binary repo root:"+binRepoRoot.getAbsolutePath());
             FileUtil.copyBinaries(srcRepoRoot, binRepoRoot);
         }else{
         	//FIXME:? if no entry existed, why still update binary repo?
@@ -462,10 +492,10 @@ public class ZeusManager {
         // 5. Call git status to get the delta (Use StatusCommand and refine it)
         //TODO: should use source repo's HEAD hash
         binaryRepository.commitNDPushAll("update binary repo");
+        logger.debug("commit/pushed changes onto remote binary repo:"+binaryRepository.getRemoteUrl());
         
+     // 7. Call the BinRepo service and create a new entity for this change - repoUrl, branch, and commit
         String binRepoUrl = ZeusUtil.calculateBinaryRepositoryUrl(sourceRepository.getRemoteUrl());
-
-        // 7. Call the BinRepo service and create a new entity for this change - repoUrl, branch, and commit
         uploadMappingData(sourceRepository.getRemoteUrl(), binRepoUrl, binaryRepository.getBranch());
         
         logger.info("Binary repository updated.");

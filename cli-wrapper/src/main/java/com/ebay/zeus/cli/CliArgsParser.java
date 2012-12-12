@@ -21,6 +21,7 @@ public class CliArgsParser {
 		options.addOption("s", "setup", false, "setup workspace");
 		options.addOption("u", "map-service-url", true, "rest api url for the mapping service");
 		options.addOption("h", "help", false, "usage");
+		options.addOption("r", "root", true, "root");
 		
 		return options;
 	}
@@ -48,6 +49,9 @@ public class CliArgsParser {
 		}
 		if( cli.hasOption('u')){
 			params.setMapSvcUrl(cli.getOptionValue('u'));
+		}
+		if (cli.hasOption('r')){
+			params.setSourceRepoRoot(cli.getOptionValue('r'));
 		}
 		
 		return params;

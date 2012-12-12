@@ -49,7 +49,7 @@ import com.ebay.zeus.exceptions.GitException;
  */
 public class ZeusCli {
 
-	public final Logger logger = LoggerFactory.getLogger(this.getClass());
+	public static final Logger logger = LoggerFactory.getLogger(ZeusCli.class);
 	
 	public static void main( String[] args ) throws ParseException{
 		
@@ -62,7 +62,8 @@ public class ZeusCli {
 		
 		long end = Calendar.getInstance().getTimeInMillis();
 		long diff = end - begin;
-		System.out.println("Time taken " + diff + " ms");
+		
+		logger.info("Time taken " + diff + " ms");
 	}
 	
 	public InputParams processCliArguments( String[] args ) throws ParseException{
@@ -76,11 +77,24 @@ public class ZeusCli {
 			parser.printUsage();
 		}
 		
+		logger.info("input params: mode - "+input.getMode()+ "; map service url - "+ input.getMapSvcUrl());
+		
 		return input;
 	}
 	
 	public void process( InputParams input ){
 		File root = new File(System.getProperty("user.dir"));
+		
+		String inputRepoRoot = input.getSourceRepoRoot();
+		if (inputRepoRoot!=null){
+			File inputRepoRootFile = new File(inputRepoRoot);
+			if (inputRepoRootFile.exists()){
+				root = inputRepoRootFile;
+			}
+		}
+		
+		logger.info("Running Zeus in source repository root:" + root.getAbsolutePath());
+		
 		ZeusManager zmanager = null;
 		try {
 			zmanager = new ZeusManager(root);

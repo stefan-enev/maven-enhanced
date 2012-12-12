@@ -3,10 +3,15 @@ package com.ebay.zeus.utils;
 import java.io.File;
 import java.io.PrintStream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.ebay.zeus.ZeusCli;
 import com.ebay.zeus.exceptions.ProcessException;
 import com.ebay.zeus.executor.ProcessExecutor;
 
 public class MavenUtil {
+	public static final Logger logger = LoggerFactory.getLogger(MavenUtil.class);
 	
     /**
      * get maven execute according to OS.
@@ -55,34 +60,35 @@ public class MavenUtil {
      * @throws ServiceException
      * @throws ProcessException 
      */
-    public static boolean executeMvnCommand( String command,
-                                       		 File workdir,
-                                       		 PrintStream logger) 
-                                       				throws ProcessException {
+	public static boolean executeMvnCommand(String command, File workdir,
+			PrintStream logger) throws ProcessException {
+		
+		StringBuilder sb = new StringBuilder();
 
-            StringBuilder sb = new StringBuilder();
+		sb.append(getMvnCommand());
+		sb.append(" ");
+		sb.append(command);
 
-            sb.append(getMvnCommand());
-            sb.append(" ");
-            sb.append(command);
+		System.out.println("executing maven command :" + sb.toString());
 
-            System.out.println("executing maven command :" + sb.toString() );
+		ProcessExecutor mvnExecutor = new ProcessExecutor(sb.toString(),
+				workdir, logger);
 
-            ProcessExecutor mvnExecutor = new ProcessExecutor(sb.toString(), workdir, logger);
-            
-            // pass all the environment from parent shell
-          
-            mvnExecutor.getEnvironment().putAll(System.getenv());
-            //mvnExecutor.getEnvironment().put("MAVEN_OPTS", m2_opts);
+		// pass all the environment from parent shell
 
-            boolean result = false;
+		mvnExecutor.getEnvironment().putAll(System.getenv());
+		// mvnExecutor.getEnvironment().put("MAVEN_OPTS", m2_opts);
 
-            try {
-                    result = mvnExecutor.executeMaven();
-            } catch (Exception e) {
-                    throw new ProcessException("execute maven command failed, command :" + sb.toString(),e);
-            }
+		boolean result = false;
 
-            return result;
-    }
+		try {
+			result = mvnExecutor.executeMaven();
+		} catch (Exception e) {
+			throw new ProcessException(
+					"execute maven command failed, command :" + sb.toString(),
+					e);
+		}
+
+		return result;
+	}
 }

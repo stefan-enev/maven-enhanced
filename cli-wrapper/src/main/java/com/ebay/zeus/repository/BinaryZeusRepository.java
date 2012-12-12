@@ -36,7 +36,7 @@ public class BinaryZeusRepository extends ZeusRepository{
 		try {
 			git.add()
 			.addFilepattern(filePattern)
-			.setUpdate(true).call();
+			.setUpdate(false).call();
 		} catch (Exception e) {
 			throw new GitException("fail to add all changes.", e);
 		}

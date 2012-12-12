@@ -22,15 +22,16 @@ public class GitUtils {
 	 * @throws GitException
 	 */
 	public static Git initRepository(File repoRoot) throws GitException {
+		logger.info("initializing bare repository:"+repoRoot);
+		
 		try {
 			FileUtils.mkdir(repoRoot, true);
 			
 			InitCommand initCmd = Git.init();
 			initCmd.setDirectory(repoRoot);
 			
-			logger.info("initializing bare repository");
 			Git git = initCmd.call();
-//			git.open(repoRoot);
+			
 			return git;
 		} catch (Exception e) {
 			throw new GitException("unable to initialize repository", e);
@@ -61,18 +62,24 @@ public class GitUtils {
 		
 	}
 	
-	public static String getRepositoryName( String repository ){
+	/**
+	 * get repository name with remote git url
+	 * 
+	 * @param remoteUrl
+	 * @return
+	 */
+	public static String getRepositoryName( String remoteUrl ){
 		
 		String repositoryName=null;
 		
-		if( repository == null || repository.trim().equals("")){
+		if( remoteUrl == null || remoteUrl.trim().equals("")){
 			throw new NullPointerException("Repository name cannot be null or empty");
 		}
 		
 		// git ssh format
 		// git@github.com:snambi/myrepo.git
-		if( repository.contains( "@" )){
-			String[]  s = repository.split("/");
+		if( remoteUrl.contains( "@" )){
+			String[]  s = remoteUrl.split("/");
 			
 			if( s != null && s.length >=2 ){
 				
@@ -87,9 +94,9 @@ public class GitUtils {
 		
 		// git readonly format
 		// git://github.com/snambi/maven-enhanced.git
-		if( repository.startsWith("git://")){
+		if( remoteUrl.startsWith("git://")){
 			
-			String[] s = repository.split("/");
+			String[] s = remoteUrl.split("/");
 			
 			if( s!= null  && s.length >= 2 ){
 				repositoryName = getRepo(s[ s.length -1 ]);
@@ -98,9 +105,9 @@ public class GitUtils {
 		
 		// http format
 		// https://github.com/snambi/myrepo.git
-		if( repository.startsWith("http")){
+		if( remoteUrl.startsWith("http")){
 			
-			String[] s = repository.split("\\/");
+			String[] s = remoteUrl.split("\\/");
 			if( s!= null  && s.length >= 2 ){
 				repositoryName = getRepo(s[ s.length -1 ]);
 			}
@@ -109,18 +116,24 @@ public class GitUtils {
 		return repositoryName;
 	}
 	
-	public static String getOrgName( String repository ){
+	/**
+	 * get org name from remote git url.
+	 * 
+	 * @param gitUrl
+	 * @return
+	 */
+	public static String getOrgName( String gitUrl ){
 		
 		String orgName=null;
 		
-		if( repository == null || repository.trim().equals("")){
+		if( gitUrl == null || gitUrl.trim().equals("")){
 			throw new NullPointerException("Repository name cannot be null or empty");
 		}
 		
 		// git ssh format
 		// git@github.com:snambi/myrepo.git
-		if( repository.contains( "@" )){
-			String[]  s = repository.split(":");
+		if( gitUrl.contains( "@" )){
+			String[]  s = gitUrl.split(":");
 			
 			if( s != null && s.length == 2 ){
 				
@@ -140,9 +153,9 @@ public class GitUtils {
 		
 		// git readonly format
 		// git://github.com/snambi/maven-enhanced.git
-		if( repository.startsWith("git://")){
+		if( gitUrl.startsWith("git://")){
 			
-			String[] s = repository.split("/");
+			String[] s = gitUrl.split("/");
 			
 			if( s!= null  && s.length >= 3 ){
 				orgName = s[ s.length -2 ];
@@ -151,9 +164,9 @@ public class GitUtils {
 		
 		// http format
 		// https://github.com/snambi/myrepo.git
-		if( repository.startsWith("http")){
+		if( gitUrl.startsWith("http")){
 			
-			String[] s = repository.split("\\/");
+			String[] s = gitUrl.split("\\/");
 			if( s!= null  && s.length >= 3 ){
 				orgName = s[ s.length -2 ];
 			}
