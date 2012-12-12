@@ -27,6 +27,7 @@ import com.ebay.zeus.cli.CliArgsParser;
 import com.ebay.zeus.cli.InputParams;
 import com.ebay.zeus.cli.RunMode;
 import com.ebay.zeus.exceptions.GitException;
+import com.ebay.zeus.utils.ZeusUtil;
 
 /**
  * <code>CliWrapper</code> prepares the workspace before maven kicks in.
@@ -55,10 +56,10 @@ public class ZeusCli {
 		
 		long begin = Calendar.getInstance().getTimeInMillis();
 		
-		ZeusCli wrapper = new ZeusCli();
-		InputParams input = wrapper.processCliArguments(args);
+		ZeusCli cli = new ZeusCli();
+		InputParams input = cli.processCliArguments(args);
 		
-		wrapper.process(input);
+		cli.process(input);
 		
 		long end = Calendar.getInstance().getTimeInMillis();
 		long diff = end - begin;
@@ -86,11 +87,8 @@ public class ZeusCli {
 		File root = new File(System.getProperty("user.dir"));
 		
 		String inputRepoRoot = input.getSourceRepoRoot();
-		if (inputRepoRoot!=null){
-			File inputRepoRootFile = new File(inputRepoRoot);
-			if (inputRepoRootFile.exists()){
-				root = inputRepoRootFile;
-			}
+		if (ZeusUtil.isLocalRepoExisted(new File(inputRepoRoot))){
+			root = new File(inputRepoRoot);
 		}
 		
 		logger.info("Running Zeus in source repository root:" + root.getAbsolutePath());

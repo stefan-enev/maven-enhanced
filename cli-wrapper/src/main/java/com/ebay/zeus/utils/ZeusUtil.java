@@ -18,6 +18,13 @@ import com.ebay.zeus.repository.SourceZeusRepository;
 public class ZeusUtil {
 	public final static Logger logger = LoggerFactory.getLogger(ZeusUtil.class);
 	
+	/**
+	 * create readme file in local binary repository.
+	 * 
+	 * @param binaryRepoFolder
+	 * @param sourceRepoUrl
+	 * @throws IOException
+	 */
     public static void createReadMeFile(final File binaryRepoFolder, String sourceRepoUrl) throws IOException {
         // add a "README.md" file and commit
         final File readmeFile = new File(binaryRepoFolder, "README.md");
@@ -29,10 +36,16 @@ public class ZeusUtil {
         org.apache.commons.io.FileUtils.writeLines(readmeFile, readmeContent, "\n");
     }
    
-    
+    /**
+     * create new remote git repository with speicified git url.
+     * if has existed remote repository, do nothing. 
+     * 
+     * @param remoteUrl
+     * @throws IOException
+     */
 	public static void createRemoteRepository(String remoteUrl) throws IOException {
 		GitHub github = new GitHubClient().getGithub();
-        GHOrganization githubOrg = github.getOrganization("Binary");
+        GHOrganization githubOrg = github.getOrganization(Constants.ORGNAME_BINARY);
         GHRepository repository = githubOrg.getRepository( GitUtils.getRepositoryName(remoteUrl) );
 
         if (repository == null ) {
@@ -40,13 +53,11 @@ public class ZeusUtil {
         	
             GHRepository repo = githubOrg.createRepository(GitUtils.getRepositoryName(remoteUrl), 
             												"Binary repository", 
-            												"https://github.scm.corp.ebay.com", 
-            												"Owners", 
+            												Constants.GITHUB_BASE_URL, 
+            												Constants.OWNERS, 
             												true);
             
             logger.info(repo.getUrl() + " created successfully ");
-        } else {
-            // fail, it shouldn't come here
         }
 	}
 	
@@ -94,16 +105,29 @@ public class ZeusUtil {
 		File binaryRepoFolder = getBinaryRepositoryRoot(sourceRepoDir);
 		
         // check whether ".SourceRepo.git" folder exists
-		if (binaryRepoFolder.exists() && binaryRepoFolder.isDirectory() && binaryRepoFolder.canRead()) {
-            // check whether ".SourceRepo.git/.git" exists
-			File binGit = new File(binaryRepoFolder, ".git");
-			if( binGit.exists() && binGit.isDirectory() && binGit.canRead() ){
-				logger.debug("binary repository existed:"+binaryRepoFolder.getAbsolutePath());
-				return binaryRepoFolder;
-			}
+		if (isLocalRepoExisted(binaryRepoFolder)){
+			return binaryRepoFolder;
 		}
 		
 		return null;
+	}
+
+	/**
+	 * check whether specified git repo existed or not.
+	 * 
+	 * @param repoRoot : git repo's root directory
+	 * @return
+	 */
+	public static boolean isLocalRepoExisted(File repoRoot) {
+		if (repoRoot.exists() && repoRoot.isDirectory() && repoRoot.canRead()) {
+            // check whether ".SourceRepo.git/.git" exists
+			File binGit = new File(repoRoot, Constants.DOT_GIT);
+			if( binGit.exists() && binGit.isDirectory() && binGit.canRead() ){
+				return true;
+			}
+		}
+		
+		return false;
 	}
 	
 	/**
@@ -141,7 +165,7 @@ public class ZeusUtil {
 		// TODO: use github apis to check whether the repository is available
 		try {
 			GitHub github = new GitHubClient().getGithub();
-			GHOrganization ghOrg = github.getOrganization("Binary");
+			GHOrganization ghOrg = github.getOrganization(Constants.ORGNAME_BINARY);
 			GHRepository repository = ghOrg.getRepository(binaryRepoName);
 			
 			if (repository != null ){
@@ -156,7 +180,7 @@ public class ZeusUtil {
 	}
     
     public static String calculateBinaryRepositoryName(String org , String repoName ){
-    	return org + "_" + repoName + "_binary";
+    	return org + "_" + repoName + "_" + Constants.ORGNAME_BINARY_LOWERCASE;
     }
     
     /**
@@ -168,10 +192,12 @@ public class ZeusUtil {
     public static String calculateBinaryRepositoryUrl(String srcRemoteUrl){
     	String remoteUrl=null;
     	String srcUrl = srcRemoteUrl;
-    	if (srcUrl.contains("scm.corp.ebay.com") ) {
+    	if (srcUrl.contains(Constants.EBAY_DOMAIN_SUFFIX) ) {
     		String org = GitUtils.getOrgName(srcUrl);
     		String repoName = GitUtils.getRepositoryName(srcUrl);
-    		remoteUrl = "git@github.scm.corp.ebay.com:Binary/" +  ZeusUtil.calculateBinaryRepositoryName(org, repoName) + ".git";
+			remoteUrl = Constants.GITURL_BINARY_SSH_PREFIX
+					+ ZeusUtil.calculateBinaryRepositoryName(org, repoName)
+					+ Constants.DOT_GIT;
     	} else {
     		
     	}

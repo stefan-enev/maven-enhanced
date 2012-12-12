@@ -86,7 +86,7 @@ public class GitUtils {
 				// take the last one
 				String gitrepo = s[s.length-1];
 				
-				if( gitrepo.contains(".git")){
+				if( gitrepo.contains(Constants.DOT_GIT)){
 					repositoryName = getRepo(gitrepo);
 				}
 			}
@@ -140,7 +140,7 @@ public class GitUtils {
 				// take the first second one
 				String gitrepo = s[1];
 				
-				if( gitrepo.contains(".git")){
+				if( gitrepo.contains(Constants.DOT_GIT)){
 					if( gitrepo.contains("/")){
 						String o[] = gitrepo.split("/");
 						if( o.length == 2){
@@ -185,7 +185,7 @@ public class GitUtils {
 		
 		if( input != null && !input.trim().equals("")){
 			
-			if( input.contains(".git")){
+			if( input.contains(Constants.DOT_GIT)){
 				String[] a = input.split("\\.");
 				repository = a[0];
 			}else{

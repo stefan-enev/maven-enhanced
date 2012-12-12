@@ -14,6 +14,7 @@ import com.ebay.zeus.exceptions.GitException;
 import com.ebay.zeus.mappingservice.MappingServiceClient;
 import com.ebay.zeus.repository.BinaryZeusRepository;
 import com.ebay.zeus.repository.SourceZeusRepository;
+import com.ebay.zeus.utils.Constants;
 import com.ebay.zeus.utils.FileUtil;
 import com.ebay.zeus.utils.GitUtils;
 import com.ebay.zeus.utils.MavenUtil;
@@ -52,12 +53,12 @@ public class ZeusManager {
 		try {
 			logger.info("initializing basic information...");
 			
-			this.sourceRepository = new SourceZeusRepository(new File(root, ".git"));
+			this.sourceRepository = new SourceZeusRepository(new File(root, Constants.DOT_GIT));
 			File sourceRepoRoot = sourceRepository.getDirectory();
 
 			if (ZeusUtil.isLocalBinaryRepositoryExisted(sourceRepoRoot)) {
 				File binaryRepoRoot = ZeusUtil.getExistedBinaryRepositoryRoot(sourceRepoRoot);
-				this.binaryRepository = new BinaryZeusRepository(new File(binaryRepoRoot, ".git"));
+				this.binaryRepository = new BinaryZeusRepository(new File(binaryRepoRoot, Constants.DOT_GIT));
 
 				isLocalBinaryRepoExisted = true;
 			}
@@ -211,7 +212,7 @@ public class ZeusManager {
 		try {
 			FileUtil.copyBinaryFolders(binaryRepository.getDirectory()
 					.getParentFile(), sourceRepository.getDirectory()
-					.getParentFile(), ".git");
+					.getParentFile(), Constants.DOT_GIT);
 		} catch (IOException e) {
 			throw new GitException(
 					"Fail to copy binary repository's folders into source repository.",	e);
@@ -282,10 +283,10 @@ public class ZeusManager {
         // TODO: check whether the remote exists, if not create it, else fail
         ZeusUtil.createRemoteRepository(binRemoteUrl);
 
-        binaryRepository = new BinaryZeusRepository(new File(binaryRepoRoot, ".git"));
+        binaryRepository = new BinaryZeusRepository(new File(binaryRepoRoot, Constants.DOT_GIT));
         // add "remote" repository
         binaryRepository.addRemoteUrl(binRemoteUrl);
-        binaryRepository.addRemoteBranch("master");
+        binaryRepository.addRemoteBranch(Constants.MASTER_BRANCH);
 
 		// addall/commit/push
         binaryRepository.commitNDPushAll("add readme");
@@ -313,7 +314,7 @@ public class ZeusManager {
 		String branchname = sourceRepository.getBranch();
 
 		// create a "branch"
-		if( !branchname.toLowerCase().equals("master") ){
+		if( !branchname.toLowerCase().equals(Constants.MASTER_BRANCH) ){
 			binaryRepository.checkoutNewBranch(branchname);
 		}
 
@@ -367,9 +368,9 @@ public class ZeusManager {
 		// construct the binary repository URL
 		String giturl;
 		if( readonly == true ){
-			giturl = "git://github.scm.corp.ebay.com/Binary/" + binaryRepoName + ".git";
+			giturl = Constants.GITURL_BINARY_GIT_PREFIX + binaryRepoName + Constants.DOT_GIT;
 		}else{
-			giturl = "git@github.scm.corp.ebay.com:Binary/" + binaryRepoName + ".git";
+			giturl = Constants.GITURL_BINARY_SSH_PREFIX + binaryRepoName + Constants.DOT_GIT;
 		}
 
 		// calculate binary repository folder
@@ -405,7 +406,7 @@ public class ZeusManager {
 		}
 
 		// Checkout the "branch" if it is not equal to "master"
-		if (!branchName.toLowerCase().equals("master")) {
+		if (!branchName.toLowerCase().equals(Constants.MASTER_BRANCH)) {
 			checkoutBinaryBranch(branchName);
 		}
 		

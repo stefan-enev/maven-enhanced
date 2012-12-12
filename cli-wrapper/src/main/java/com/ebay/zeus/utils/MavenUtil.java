@@ -6,7 +6,6 @@ import java.io.PrintStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ebay.zeus.ZeusCli;
 import com.ebay.zeus.exceptions.ProcessException;
 import com.ebay.zeus.executor.ProcessExecutor;
 
