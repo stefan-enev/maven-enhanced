@@ -79,6 +79,18 @@ public class BinaryZeusRepository extends ZeusRepository{
 	}
 	
 	/**
+	 * add all local changes and commit it.
+	 * 
+	 * @param commitHash
+	 * @return
+	 * @throws GitException
+	 */
+	public RevCommit commitAll(String commitHash) throws GitException{
+		addAll();
+        return commit(commitHash);
+	}
+	
+	/**
 	 * create branch with specified branch name.
 	 * 
 	 * @param branchName

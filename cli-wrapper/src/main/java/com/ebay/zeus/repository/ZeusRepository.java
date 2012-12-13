@@ -140,6 +140,20 @@ public class ZeusRepository extends FileRepository{
 	}
 	
 	/**
+	 * get latest commit by 'git log'
+	 * 
+	 * @return
+	 * @throws GitException
+	 */
+	public RevCommit getHeadCommit() throws GitException{
+		try {
+			return this.getAllCommits().get(0);
+		} catch (GitException e) {
+			throw new GitException("fail to get commit history for repository" + this.getDirectory().getParent(), e);
+		}
+	}
+	
+	/**
 	 * get all branches
 	 * 
 	 * @return branch list
@@ -162,7 +176,7 @@ public class ZeusRepository extends FileRepository{
 
 			// ignore branches with name 'HEAD' or ""(not remote branch)
 			if (branch.endsWith("HEAD") || branch.startsWith("heads")
-					|| branch.startsWith(Constants.R_TAGS) || branch.equals("")) {
+					|| branch.startsWith(Constants.R_TAGS) || branch.equals("") || !branch.startsWith("origin")) {
 				continue;
 			} else {
 				branches.add(branch);
@@ -285,6 +299,8 @@ public class ZeusRepository extends FileRepository{
     			commitList.add(iterator.next());
     		}
     		
+    		Collections.reverse(commitList);
+    		
     		return commitList;
 		} catch (Exception e) {
 			throw new GitException("", e);
@@ -323,5 +339,29 @@ public class ZeusRepository extends FileRepository{
 		} catch (IOException e) {
 			throw new GitException("fail to add branch: "+branchName+" to repository: "+ this.getDirectory(), e);
 		}
+	}
+	
+	/**
+	 * check whether this branch has this commit hash
+	 * 
+	 * @param commitHash
+	 * @return
+	 * @throws GitException
+	 */
+	public boolean hasCommit(String commitHash) throws GitException{
+		if (commitHash == null || "".equals(commitHash)){
+			throw new GitException("commit SHA shouldn't be empty.");
+		}
+		
+		List<RevCommit> allCommits = getAllCommits();
+		for (RevCommit commit:allCommits){
+			
+			//previous create/update will put source repo's commit hash as binary repo's commit message.
+			if (commitHash.equals(commit.getFullMessage())){
+				return true;
+			}
+		}
+		
+		return false;
 	}
 }

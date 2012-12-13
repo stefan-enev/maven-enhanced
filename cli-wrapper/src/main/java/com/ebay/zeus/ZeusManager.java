@@ -6,11 +6,12 @@ import java.util.Calendar;
 import java.util.List;
 
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ebay.zeus.exceptions.GitException;
-import com.ebay.zeus.mappingservice.MappingServiceClient;
+import com.ebay.zeus.exceptions.ProcessException;
 import com.ebay.zeus.repository.BinaryZeusRepository;
 import com.ebay.zeus.repository.SourceZeusRepository;
 import com.ebay.zeus.utils.Constants;
@@ -36,7 +37,7 @@ public class ZeusManager {
     
     private boolean isLocalBinaryRepoExisted = false;
     
-    private static MappingServiceClient mappingServiceClient;
+//    private static MappingServiceClient mappingServiceClient;
 
 	public ZeusManager(File root) throws GitException {
 		if (root.canRead() && root.isDirectory()){
@@ -64,25 +65,20 @@ public class ZeusManager {
 			
 			srcRepoRoot = sourceRepository.getDirectory().getParentFile();
 			
-			mappingServiceClient = new MappingServiceClient();
+//			mappingServiceClient = new MappingServiceClient();
 			logger.info("initialized basic information.");
 		} catch (IOException e) {
 			throw new GitException("Fail to initialize source repository or binary repository.", e);
 		}
 	}
 	
-	public void createOrUpdateBinaryRepository(String mapSvcUrl)
+	public void createOrUpdateBinaryRepository()
 			throws GitException {
 
 		logger.info("starting to create/update binary repository");
 		
 		// assume the current directory the "root" of the project
 		try {
-
-			if (mapSvcUrl != null) {
-				setBaseServiceUrl(mapSvcUrl);
-			}
-
 			long starttime = 0l;
 			long endtime = 0l;
 
@@ -113,8 +109,8 @@ public class ZeusManager {
 					// checkout new local branch
 					// 2. Then copy source repo's classes into binary repo and
 					// upload changes
-					checkoutBinaryBranch();
-					updateBinaryRepository();
+					
+					updateExistedLocalBinaryRepository();
 				} else {
 					logger.info("remote binary repository not existed, create it.");
 					// calculate start time
@@ -170,32 +166,34 @@ public class ZeusManager {
 		// 'processNewCommits'
 		// even if it fails, continue the loop
 		
-		MavenUtil.executeMvnCommand("compile", root, System.out);
+		compile();
 
 		// update binary repo
 		updateBinaryRepository();
 		
 		logger.info("Updated existed binary repository");
 	}
+
+	private void compile() throws ProcessException {
+		MavenUtil.executeMvnCommand("compile", root, System.out);
+	}
 	
-	public void setupProject(String mapSvcUrl) throws GitException {
+	public void setupProject() throws GitException, IOException {
 		// TODO: download dependencies
 		
 		// read the source project
         // TODO: RGIROTI Remove next line at some point - refactor this to a test case somewhere
         // root = new File("D:\\dev\\devex\\binrepo-devex");
 		
-		setBaseServiceUrl(mapSvcUrl);
-
 		if (ZeusUtil.isBinaryRepositoryExisted(sourceRepository)) {
-			checkoutBinaryBranch();
+			checkoutBinaryBranch(sourceRepository.getBranch());
 			copyClassesFromBinaryRepoToSourceRepo();
 			
 			logger.info("setup is complete");
 		} else if (ZeusUtil.isRemoteBinaryRepositoryExisted(sourceRepository
 				.getRemoteUrl())) {
 			cloneBinaryRepository(true);
-			checkoutBinaryBranch();
+			checkoutBinaryBranch(sourceRepository.getBranch());
 			copyClassesFromBinaryRepoToSourceRepo();
 			
 			logger.info("setup is complete");
@@ -254,14 +252,27 @@ public class ZeusManager {
 
 		// Calculate the remote url for binary repository
         String binRemoteUrl = ZeusUtil.calculateBinaryRepositoryUrl(sourceRepository.getRemoteUrl());
-
-		addReadmeForNewBinaryRepo(binaryRepoRoot, binRemoteUrl);
-		
-		addSrcRepoClassesToBinRepo(binaryRepoRoot);
-
-        uploadMappingData(sourceRepository.getRemoteUrl(), binRemoteUrl, sourceRepository.getBranch());
         
-        logger.info("updated the map service");
+        createRemoteBinaryRepository(binaryRepoRoot, binRemoteUrl);
+		addReadmeForNewBinaryRepo(binaryRepoRoot);
+		
+		List<String> allBranches = sourceRepository.getAllBranches();
+		
+		//update master first.
+		updateBinaryBranch("origin/"+Constants.MASTER_BRANCH);
+		
+		for (String branch:allBranches){
+			if (!branch.contains(Constants.MASTER_BRANCH)){
+				updateBinaryBranch(branch);
+			}
+		}
+		
+//		addSrcRepoClassesToBinRepo(binaryRepoRoot);
+		binaryRepository.push(false);
+		
+//        uploadMappingData(sourceRepository.getRemoteUrl(), binRemoteUrl, sourceRepository.getBranch());
+        
+        logger.info("Completed to create binary repository.");
     }
 
 	/**
@@ -273,80 +284,78 @@ public class ZeusManager {
 	 * @throws IOException
 	 * @throws GitException
 	 */
-	private String addReadmeForNewBinaryRepo(File binaryRepoRoot, String binRemoteUrl)
+	private void addReadmeForNewBinaryRepo(File binaryRepoRoot)
 			throws IOException, GitException {
 		logger.info("adding readme.md file");
         
         ZeusUtil.createReadMeFile(binaryRepoRoot, sourceRepository.getRemoteUrl());
 
-        // TODO: check whether the remote exists, if not create it, else fail
-        ZeusUtil.createRemoteRepository(binRemoteUrl);
+		// addall/commit/push
+        binaryRepository.commitNDPushAll(Constants.FIRST_COMMIT_MESSAGE);
+        
+        logger.info("added readme.md file");
+	}
+
+	private void createRemoteBinaryRepository(File binaryRepoRoot,
+			String binRemoteUrl) throws IOException, GitException {
+		ZeusUtil.createRemoteRepository(binRemoteUrl);
 
         binaryRepository = new BinaryZeusRepository(new File(binaryRepoRoot, Constants.DOT_GIT));
         // add "remote" repository
         binaryRepository.addRemoteUrl(binRemoteUrl);
         binaryRepository.addRemoteBranch(Constants.MASTER_BRANCH);
-
-		// addall/commit/push
-        binaryRepository.commitNDPushAll("add readme");
-		return binRemoteUrl;
 	}
 	
-	/**
-	 * add source repository's classes to binary repository.
-	 * 1. copy classes.
-	 * 2. addAll/commit/push
-	 * 
-	 * FIXME:
-	 * create new binary repo, needn't "mvn compile"?
-	 * 
-	 * @param binaryRepoRoot
-	 * @return
-	 * @throws IOException
-	 * @throws GitException
-	 */
-	private void addSrcRepoClassesToBinRepo(File binaryRepoRoot)
-			throws IOException, GitException {
-		logger.info("adding classes from source repository to binary repository...");
-		
-		// read the branch from "source" repository
-		String branchname = sourceRepository.getBranch();
-
-		// create a "branch"
-		if( !branchname.toLowerCase().equals(Constants.MASTER_BRANCH) ){
-			binaryRepository.checkoutNewBranch(branchname);
-		}
-
-		// find the "localobr" folders and exclude them during copy
-		List<String> excludes = FileUtil.findExcludes(srcRepoRoot, "localobr");
-
-		// copy the classes
-		logger.info("copying binary files");
-		FileUtil.copyBinaryFolders("target", excludes, sourceRepository.getDirectory(), binaryRepoRoot);
-
-		binaryRepository.commitNDPushAll(sourceRepository.getHead());
-	}
+//	/**
+//	 * add source repository's classes to binary repository.
+//	 * 1. copy classes.
+//	 * 2. addAll/commit/push
+//	 * 
+//	 * FIXME:
+//	 * create new binary repo, needn't "mvn compile"?
+//	 * 
+//	 * @param binaryRepoRoot
+//	 * @return
+//	 * @throws IOException
+//	 * @throws GitException
+//	 */
+//	private void addSrcRepoClassesToBinRepo(File binaryRepoRoot)
+//			throws IOException, GitException {
+//		logger.info("adding classes from source repository to binary repository...");
+//		
+//		// read the branch from "source" repository
+//		String branchname = sourceRepository.getBranch();
+//
+//		// create a "branch"
+//		if( !branchname.toLowerCase().equals(Constants.MASTER_BRANCH) ){
+//			binaryRepository.checkoutNewBranch(branchname);
+//		}
+//
+//		copyClassesFromSrcRepoToBinRepo(binaryRepoRoot);
+//
+//		binaryRepository.commitNDPushAll(sourceRepository.getHead());
+//	}
 	
-	/**
-	 * upload mapping data onto mapping service.
-	 * 
-	 * @param sourceRepoUrl
-	 * @param binRepoUrl
-	 * @param branchname
-	 * @throws Exception
-	 */
-	private void uploadMappingData(String sourceRepoUrl, String binRepoUrl, String branchname) throws Exception {
-		
-		final String sourceRepoHeadHash = sourceRepository.getHead();
-		final String binRepoHeadHash = binaryRepository.getHead();
-        final String binRepoBranchName = binaryRepository.getBranch();
-
-        logger.info("Updating Bin Repo Service with the new changes - POST new object to service");
-        
-   	    mappingServiceClient.post(sourceRepoUrl, branchname, sourceRepoHeadHash, binRepoUrl, binRepoBranchName, binRepoHeadHash);
-   	    
-   	    logger.info("Updated Bin Repo Service with the new changes");
-	}
+//	/**
+//	 * upload mapping data onto mapping service.
+//	 * 
+//	 * @param sourceRepoUrl
+//	 * @param binRepoUrl
+//	 * @param branchname
+//	 * @throws Exception
+//	 */
+//	private void uploadMappingData(String sourceRepoUrl, String binRepoUrl, String branchname) throws Exception {
+//		
+//		final String sourceRepoHeadHash = sourceRepository.getHead();
+//		final String binRepoHeadHash = binaryRepository.getHead();
+//        final String binRepoBranchName = binaryRepository.getBranch();
+//
+//        logger.info("Updating Bin Repo Service with the new changes - POST new object to service");
+//        
+//   	    mappingServiceClient.post(sourceRepoUrl, branchname, sourceRepoHeadHash, binRepoUrl, binRepoBranchName, binRepoHeadHash);
+//   	    
+//   	    logger.info("Updated Bin Repo Service with the new changes");
+//	}
 
 	/**
 	 * if local binary repository not existed, clone binary repository from remote.
@@ -388,30 +397,6 @@ public class ZeusManager {
     }
 	
 	/**
-	 * checkout binary repository's branch according to source repository's current branch.
-	 * 
-	 * @throws GitException
-	 */
-	private void checkoutBinaryBranch() throws GitException{
-		logger.info("Checking out binary branch...");
-		
-		// read the branch from "source" repository
-		String branchName = null;
-		try {
-			branchName = sourceRepository.getBranch();
-		} catch (IOException e) {
-			throw new GitException("Fail to get source repository's current branch.", e);
-		}
-
-		// Checkout the "branch" if it is not equal to "master"
-		if (!branchName.toLowerCase().equals(Constants.MASTER_BRANCH)) {
-			checkoutBinaryBranch(branchName);
-		}
-		
-		logger.info("Checked out branch:"+branchName+ " successfully.");
-	}
-	
-	/**
 	 * checkout specified branch for binary repository.
 	 * it try to make binary repository ready for next step(like copy classes and push).
 	 * if remote branch not existed, create it.
@@ -422,6 +407,10 @@ public class ZeusManager {
 	private void checkoutBinaryBranch(String branchName) throws GitException {
 		logger.info("checking out binary repository's branch:"+branchName+"...");
 		
+		if (branchName.toLowerCase().equals(Constants.MASTER_BRANCH)) {
+			return;
+		}
+		
 		// check whether the branch exists
 		boolean isBranchExisted = binaryRepository.isBranchExisted(branchName);
 		
@@ -431,14 +420,12 @@ public class ZeusManager {
 			// check the current branch in binary repository
 			try {
 				if( !binaryRepository.getBranch().equals(branchName) ){
-					binaryRepository.checkoutRemoteBranch(branchName);
+					binaryRepository.checkoutBranch(branchName);
 				}
 			} catch (IOException e) {
 				throw new GitException("can't checkout remote branch("+branchName+") into local.", e);
 			}
 		}
-		
-		throw new GitException("Fail to checkout binary repository's branch:"+branchName);
 	}
 
 	/**
@@ -446,56 +433,106 @@ public class ZeusManager {
 	 * 1. copy source repo's classes into binary repo.
 	 * 2. push binary repo's changes into remote. 
 	 * 
-	 * FIXME: 
-	 *   haven't check whether binary repo is the same branch to source repo.
 	 * 
 	 * @throws Exception
 	 */
-    private void updateBinaryRepository() 
-    		throws Exception {
-    	
+    private void updateBinaryRepository() throws Exception {
     	logger.info("updating binary repository...");
     	
-        // 1. Check if repository exists remotely git@github.scm.corp.ebay.com/Binary/Repo_Binary.git
-        final String repoUrl = sourceRepository.getRemoteUrl();
-
         final File binRepoRoot = ZeusUtil.getExistedBinaryRepositoryRoot(srcRepoRoot);
         
-        logger.info("SourceRepository = " + srcRepoRoot.getCanonicalPath() + "\nBinaryRepository = " + binRepoRoot.getCanonicalPath());
+		logger.info("SourceRepository = " + srcRepoRoot.getCanonicalPath()
+					+ "\nBinaryRepository = " + binRepoRoot.getCanonicalPath());
 
-        // 2. Get branch/commit hash for the source repo - the actual source code
-        final String branch = sourceRepository.getBranch();
-        String headHash = sourceRepository.getHead();
-
-        // 3. Call the BinRepo service and check if a corresponding BinRepo entry exists
-        // 4. If not copy all the target folders from the source repo to the binary repo - root to root copy of artifacts
-        if (mappingServiceClient.isEntryExisted(repoUrl, branch, headHash)) {
-			logger.info("Source Directory:'" + srcRepoRoot.getCanonicalPath()
-					+ "' Destination Directory:'"
-					+ binRepoRoot.getCanonicalPath() + "'");
-			logger.debug("mapping service hasn't its entry, start to copy classes from source repo to binary repo...");
-			logger.debug("source repo root:"+srcRepoRoot.getAbsolutePath());
-			logger.debug("binary repo root:"+binRepoRoot.getAbsolutePath());
-            FileUtil.copyBinaries(srcRepoRoot, binRepoRoot);
-        }else{
-        	//FIXME:? if no entry existed, why still update binary repo?
+        List<String> allBranches = sourceRepository.getAllBranches();
+        
+        for (String branch:allBranches){
+        	updateBinaryBranch(branch);
         }
-
-        // 5. Call git status to get the delta (Use StatusCommand and refine it)
-        //TODO: should use source repo's HEAD hash
-        binaryRepository.commitNDPushAll("update binary repo");
-        logger.debug("commit/pushed changes onto remote binary repo:"+binaryRepository.getRemoteUrl());
         
-     // 7. Call the BinRepo service and create a new entity for this change - repoUrl, branch, and commit
-        String binRepoUrl = ZeusUtil.calculateBinaryRepositoryUrl(sourceRepository.getRemoteUrl());
-        uploadMappingData(sourceRepository.getRemoteUrl(), binRepoUrl, binaryRepository.getBranch());
-        
+        binaryRepository.push(false);
+		logger.debug("commit/pushed changes onto remote binary repo:"
+					+ binaryRepository.getRemoteUrl());
         logger.info("Binary repository updated.");
     }
-    
-    private void setBaseServiceUrl(String url){
-    	mappingServiceClient.setBaseServiceUrl(url);
-    }
+
+    /**
+     * update specified branch by its source repo's compiled classes
+     * 
+     * @param branch
+     */
+	private void updateBinaryBranch(String branch) {
+		logger.info("updating binary repository's branch:"+branch);
+		
+		try {
+			sourceRepository.checkoutBranch(branch);
+			
+			checkoutBinaryBranch(branch);
+	        RevCommit headCommit = binaryRepository.getHeadCommit();
+	        
+	        List<RevCommit> newCommits = sourceRepository.getNewCommits(headCommit);
+	        
+	        for (RevCommit commit:newCommits){
+	        	updateBinaryWithNewCommit(commit);
+	        }
+	        
+		} catch (Exception e) {
+			//shouldn't break others branch.
+			logger.error(e.getMessage(), e);
+		}
+        
+        logger.info("updated binary repository's branch:"+branch);
+	}
+
+	/**
+	 * update binary repo with specified commit
+	 * 
+	 * @param commit
+	 * @throws GitException
+	 */
+	private void updateBinaryWithNewCommit(RevCommit commit) throws GitException {
+		logger.info("updating binary repository with commit:"+commit.getFullMessage());
+		
+		final File binRepoRoot = ZeusUtil.getExistedBinaryRepositoryRoot(srcRepoRoot);
+		
+    	if (!binaryRepository.hasCommit(commit.getName())){
+        	try {
+        		//FIXME: if reset to previous commits, can't make sure workspace is clean.
+        		sourceRepository.reset(commit.getName());
+        		
+        		//TODO: should only compile changed files...
+        		compile();
+        		
+            	//TODO: should only copy changed files instead of all of them.
+				copyClassesFromSrcRepoToBinRepo(binRepoRoot);
+			} catch (Exception e) {
+				//shouldn't break others commits
+				logger.error(e.getMessage(), e);
+			}
+        	binaryRepository.commitAll(commit.getName());
+        	
+        	//rollback
+        	sourceRepository.pull();
+        }
+    	
+    	logger.info("updated binary repository with commit:"+commit.getFullMessage());
+	}
+
+	/**
+	 * copy classes from source repo to binary repo, exclude "localobr"
+	 * 
+	 * @param binRepoRoot
+	 * @throws IOException
+	 */
+	private void copyClassesFromSrcRepoToBinRepo(final File binRepoRoot)
+			throws IOException {
+		// find the "localobr" folders and exclude them during copy
+		List<String> excludes = FileUtil.findExcludes(srcRepoRoot, "localobr");
+
+		// copy the classes
+		logger.info("copying binary files");
+		FileUtil.copyBinaryFolders("target", excludes, sourceRepository.getDirectory(), binRepoRoot);
+	}
     
 //    //TODO: haven't start it yet.
 //	public void downloadDependencies(){

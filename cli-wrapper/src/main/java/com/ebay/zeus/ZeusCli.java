@@ -17,6 +17,7 @@
 package com.ebay.zeus;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Calendar;
 
 import org.apache.commons.cli.ParseException;
@@ -98,13 +99,16 @@ public class ZeusCli {
 			zmanager = new ZeusManager(root);
 
 			if (input.getMode().equals(RunMode.CREATE_UPDATE)) {
-				zmanager.createOrUpdateBinaryRepository(input.getMapSvcUrl());
+				zmanager.createOrUpdateBinaryRepository();
 			}
 
 			if (input.getMode().equals(RunMode.SETUP)) {
-				zmanager.setupProject(input.getMapSvcUrl());
+				zmanager.setupProject();
 			}
 		} catch (GitException e) {
+			logger.error(e.getMessage(), e);
+			return;
+		} catch (IOException e) {
 			logger.error(e.getMessage(), e);
 			return;
 		}

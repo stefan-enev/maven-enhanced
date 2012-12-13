@@ -8,6 +8,7 @@ import java.util.List;
 import org.eclipse.jgit.revwalk.RevCommit;
 
 import com.ebay.zeus.exceptions.GitException;
+import com.ebay.zeus.utils.Constants;
 
 public class SourceZeusRepository extends ZeusRepository {
 
@@ -33,15 +34,26 @@ public class SourceZeusRepository extends ZeusRepository {
 	 * @param sinceCommitHash
 	 * @throws GitException 
 	 */
-	public List<RevCommit> getNewCommits(String sinceCommitHash) throws GitException{
+	public List<RevCommit> getNewCommits(RevCommit sinceCommit) throws GitException{
 		List<RevCommit> allCommits = getAllCommits();
 		
-		if (sinceCommitHash==null || "".equals(sinceCommitHash)){
+		if (sinceCommit==null || "".equals(sinceCommit.getName())){
 			throw new GitException("'since' commit hash can't be empty.");
 		}
+
+		//if binary repo is bare, then return all commits.
+		if (sinceCommit.getFullMessage().equals(Constants.FIRST_COMMIT_MESSAGE)){
+			
+			if (allCommits.size() > Constants.COMMIT_MAX_NUMBER){
+				return allCommits.subList(0, Constants.COMMIT_MAX_NUMBER); 
+			}
+			
+			return allCommits;
+		}
 		
+		String sinceCommitHash = sinceCommit.getName();
+
 		int idx = 0;
-		
 		for (int i=0; i<allCommits.size(); i++){
 			RevCommit curCommit = allCommits.get(i);
 			if (sinceCommitHash.equals(curCommit.getName())){

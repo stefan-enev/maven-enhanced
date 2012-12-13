@@ -36,7 +36,10 @@ public class SourceZeusRepositoryTest extends BaseZeusRepositoryTestCase{
 		repo.pull();
 		assertEquals("0066255c3e06f8ba2e61755033f4252f04f2fc1c", repo.getHead());
 		
-		List<RevCommit> commits = repo.getNewCommits("9ce0aaf2ffd10192ebac6122a07055e2910f49de");
+		List<RevCommit> allcommits = repo.getAllCommits();
+		
+		assertEquals("9ce0aaf2ffd10192ebac6122a07055e2910f49de", allcommits.get(1).getName());
+		List<RevCommit> commits = repo.getNewCommits(allcommits.get(1));
 		
 		assertEquals(1, commits.size());
 	}
