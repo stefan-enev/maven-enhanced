@@ -324,8 +324,7 @@ public class ZeusManager {
 		logger.info("copying binary files");
 		FileUtil.copyBinaryFolders("target", excludes, sourceRepository.getDirectory(), binaryRepoRoot);
 
-		// TODO: should use src repo's HEAD hash
-		binaryRepository.commitNDPushAll("src commit hash");
+		binaryRepository.commitNDPushAll(sourceRepository.getHead());
 	}
 	
 	/**

@@ -16,12 +16,16 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.LogCommand;
 import org.eclipse.jgit.api.MergeResult.MergeStatus;
 import org.eclipse.jgit.api.PullResult;
+import org.eclipse.jgit.api.ResetCommand.ResetType;
+import org.eclipse.jgit.api.errors.CheckoutConflictException;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.TransportException;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.RefComparator;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.storage.file.FileBasedConfig;
 import org.eclipse.jgit.storage.file.FileRepository;
 import org.eclipse.jgit.util.RefMap;
 import org.slf4j.Logger;
@@ -249,14 +253,19 @@ public class ZeusRepository extends FileRepository{
 		}
 	}
 	
-	//TODO
-	public void checkoutCommit(String commitHash){
-		
-	}
-	
-	//TODO:
-	public List<RevCommit> getNewCommits(String branchName) throws GitException{
-    	return Collections.emptyList();
+	/**
+	 * git reset --hard <SHA>
+	 * but if after reset, it's better to git pull again to rollback to latest version.
+	 * 
+	 * @param commitHash
+	 * @throws GitException 
+	 */
+	public void reset(String commitHash) throws GitException{
+		try {
+			git.reset().setMode(ResetType.HARD).setRef(commitHash).call();
+		} catch (Exception e) {
+			throw new GitException("fail to reset commit:"+commitHash+" to repository:"+this.getDirectory().getParent(), e);
+		}
 	}
 	
 	/**
@@ -282,4 +291,37 @@ public class ZeusRepository extends FileRepository{
 		}
 	}
 	
+	/**
+	 * add remote url into git config.
+	 * 
+	 * @param remoteUrl
+	 * @throws GitException 
+	 */
+	public void addRemoteUrl(String remoteUrl) throws GitException{
+		this.getConfig().setString("remote", "origin", "url", remoteUrl);
+		this.getConfig().setString("remote", "origin", "fetch", "+refs/heads/*:refs/remotes/origin/*");
+		
+        try {
+			this.getConfig().save();
+		} catch (IOException e) {
+			throw new GitException("fail to add remote url: "+remoteUrl+" to repository: "+ this.getDirectory(), e);
+		}
+	}
+	
+	/**
+	 * add new branch into git config
+	 * 
+	 * @param branchName
+	 * @throws GitException 
+	 */
+	public void addRemoteBranch(String branchName) throws GitException{
+		FileBasedConfig config = this.getConfig();
+		config.setString("branch", branchName, "remote", "origin");
+		config.setString("branch", branchName, "merge", "refs/heads/"+ branchName);
+		try {
+			config.save();
+		} catch (IOException e) {
+			throw new GitException("fail to add branch: "+branchName+" to repository: "+ this.getDirectory(), e);
+		}
+	}
 }
