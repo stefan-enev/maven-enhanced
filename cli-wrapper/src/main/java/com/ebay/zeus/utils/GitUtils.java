@@ -197,4 +197,12 @@ public class GitUtils {
 		return repository;
 	}
 
+	public static String getShortBranchName(String fullBranchName) {
+		if (fullBranchName.startsWith(com.ebay.zeus.utils.Constants.ORIGIN_BRANCHNAME_PREFIX)){
+			fullBranchName = fullBranchName
+					.substring(com.ebay.zeus.utils.Constants.ORIGIN_BRANCHNAME_PREFIX
+							.length());
+		}
+		return fullBranchName;
+	}
 }

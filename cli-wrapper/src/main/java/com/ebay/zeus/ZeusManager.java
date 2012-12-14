@@ -2,6 +2,7 @@ package com.ebay.zeus;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
@@ -162,20 +163,28 @@ public class ZeusManager {
 		// get the latest by "git pull" on "source" and "binary".
 		gitpull();
 
-		// TODO: perform maven build. Remove this after implementing
-		// 'processNewCommits'
-		// even if it fails, continue the loop
-		
-		compile();
-
 		// update binary repo
 		updateBinaryRepository();
 		
 		logger.info("Updated existed binary repository");
 	}
 
-	private void compile() throws ProcessException {
-		MavenUtil.executeMvnCommand("compile", root, System.out);
+	/**
+	 * execute "mvn compile" in root folder.
+	 * if there aren't pom file in root folder, won't execute "mvn compile"
+	 * 
+	 * @return true:executed compile; false:hasn't executed compile.
+	 * @throws ProcessException
+	 */
+	private boolean compile() throws ProcessException {
+		File pomFile = new File(root, "pom.xml");
+		if (pomFile.exists()){
+			MavenUtil.executeMvnCommand("compile", root, System.out);
+			
+			return true;
+		}
+		
+		return false;
 	}
 	
 	public void setupProject() throws GitException, IOException {
@@ -259,7 +268,7 @@ public class ZeusManager {
 		List<String> allBranches = sourceRepository.getAllBranches();
 		
 		//update master first.
-		updateBinaryBranch("origin/"+Constants.MASTER_BRANCH);
+		updateBinaryBranch(Constants.MASTER_BRANCH);
 		
 		for (String branch:allBranches){
 			if (!branch.contains(Constants.MASTER_BRANCH)){
@@ -407,6 +416,8 @@ public class ZeusManager {
 	private void checkoutBinaryBranch(String branchName) throws GitException {
 		logger.info("checking out binary repository's branch:"+branchName+"...");
 		
+		branchName = GitUtils.getShortBranchName(branchName);
+		
 		if (branchName.toLowerCase().equals(Constants.MASTER_BRANCH)) {
 			return;
 		}
@@ -428,6 +439,8 @@ public class ZeusManager {
 		}
 	}
 
+	 private List<String> notNeedProcessedCommits = new ArrayList<String>();
+	 
 	/**
 	 * complete following works:
 	 * 1. copy source repo's classes into binary repo.
@@ -438,6 +451,7 @@ public class ZeusManager {
 	 */
     private void updateBinaryRepository() throws Exception {
     	logger.info("updating binary repository...");
+    	notNeedProcessedCommits.clear();
     	
         final File binRepoRoot = ZeusUtil.getExistedBinaryRepositoryRoot(srcRepoRoot);
         
@@ -450,12 +464,11 @@ public class ZeusManager {
         	updateBinaryBranch(branch);
         }
         
-        binaryRepository.push(false);
 		logger.debug("commit/pushed changes onto remote binary repo:"
 					+ binaryRepository.getRemoteUrl());
         logger.info("Binary repository updated.");
     }
-
+    
     /**
      * update specified branch by its source repo's compiled classes
      * 
@@ -473,15 +486,33 @@ public class ZeusManager {
 	        List<RevCommit> newCommits = sourceRepository.getNewCommits(headCommit);
 	        
 	        for (RevCommit commit:newCommits){
-	        	updateBinaryWithNewCommit(commit);
+	        	if (needProcess(commit)){
+	        		updateBinaryWithNewCommit(commit);
+	        	}else{
+	        		logger.debug("needn't handle this commit:"+commit.getName()+"--"+commit.getFullMessage());
+	        	}
 	        }
 	        
+	        //rollback to "master"
+        	sourceRepository.checkoutBranch(Constants.MASTER_BRANCH);
+        	binaryRepository.checkoutBranch(Constants.MASTER_BRANCH);
 		} catch (Exception e) {
 			//shouldn't break others branch.
 			logger.error(e.getMessage(), e);
 		}
         
         logger.info("updated binary repository's branch:"+branch);
+	}
+
+	/**
+	 * if one commit has been processed, and prove to not need to be processed.
+	 * then ignore this commit. 
+	 * 
+	 * @param commit
+	 * @return
+	 */
+	private boolean needProcess(RevCommit commit) {
+		return !notNeedProcessedCommits.contains(commit.getName());
 	}
 
 	/**
@@ -497,22 +528,36 @@ public class ZeusManager {
 		
     	if (!binaryRepository.hasCommit(commit.getName())){
         	try {
-        		//FIXME: if reset to previous commits, can't make sure workspace is clean.
+        		//TODO: add precheck, whether changed files for this commit should be processed, if no, skip it.
+//        		List<File> changedFiles = sourceRepository.getChangedFiles(commit);
+        		
         		sourceRepository.reset(commit.getName());
         		
         		//TODO: should only compile changed files...
-        		compile();
+        		if (compile()){
+        			//TODO: should only copy changed files instead of all of them.
+    				copyClassesFromSrcRepoToBinRepo(binRepoRoot);
+    				
+    				//TODO: only take care UNTRACKED/MODIFIED cases, ignore DELETE or RENAME cases.
+    				if (binaryRepository.getChangedFiles().size() > 0){
+    					binaryRepository.commitNDPushAll(commit.getName());
+    				}else{
+    					logger.debug("Haven't found any changed files, needn't commit/push.");
+    					notNeedProcessedCommits.add(commit.getName());
+    				}
+        		}else{
+        			logger.debug("No pom file found in directory"+sourceRepository.getDirectory().getParent());
+        			notNeedProcessedCommits.add(commit.getName());
+        		}
         		
-            	//TODO: should only copy changed files instead of all of them.
-				copyClassesFromSrcRepoToBinRepo(binRepoRoot);
 			} catch (Exception e) {
 				//shouldn't break others commits
 				logger.error(e.getMessage(), e);
+				notNeedProcessedCommits.add(commit.getName());
+			}finally{
+				//rollback
+	        	sourceRepository.pull();
 			}
-        	binaryRepository.commitAll(commit.getName());
-        	
-        	//rollback
-        	sourceRepository.pull();
         }
     	
     	logger.info("updated binary repository with commit:"+commit.getFullMessage());

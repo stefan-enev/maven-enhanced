@@ -11,6 +11,7 @@ public class Constants {
     public final static String GITHUB_BASE_URL = "https://github.scm.corp.ebay.com";
     public final static String OWNERS = "Owners";
     public final static String MASTER_BRANCH = "master";
+    public final static String ORIGIN_BRANCHNAME_PREFIX = "origin/";
     
     public final static String FIRST_COMMIT_MESSAGE = "first-commit";
     public final static int COMMIT_MAX_NUMBER = 10;

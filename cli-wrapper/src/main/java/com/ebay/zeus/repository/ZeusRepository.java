@@ -17,17 +17,22 @@ import org.eclipse.jgit.api.LogCommand;
 import org.eclipse.jgit.api.MergeResult.MergeStatus;
 import org.eclipse.jgit.api.PullResult;
 import org.eclipse.jgit.api.ResetCommand.ResetType;
-import org.eclipse.jgit.api.errors.CheckoutConflictException;
-import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.errors.TransportException;
+import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.diff.DiffFormatter;
+import org.eclipse.jgit.diff.RawTextComparator;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.RefComparator;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileBasedConfig;
 import org.eclipse.jgit.storage.file.FileRepository;
+import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.util.RefMap;
+import org.eclipse.jgit.util.io.DisabledOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,10 +88,17 @@ public class ZeusRepository extends FileRepository{
 	 * @throws GitException
 	 */
 	public void pull() throws GitException{
-		
-//		Git srcgit = Git.wrap(this);
-		
 		try {
+			//check whether current branch is bound with upstream branch. 
+			//if not, add it.
+			String curBranch = this.getBranch();
+			String branchConfig = this.getConfig().getString("branch", curBranch, "remote");
+			if (branchConfig == null){
+				this.getConfig().setString("branch", curBranch, "remote", "origin");
+				this.getConfig().setString("branch", curBranch, "merge", "refs/heads/"+curBranch);
+				
+				saveConfig();
+			}
 			
 			PullResult pullResult = git.pull().call();
 			
@@ -124,16 +136,9 @@ public class ZeusRepository extends FileRepository{
 	 * @return HEAD's commit hash
 	 * @throws GitException
 	 */
-	public String getHead() throws GitException{
-        
-        ObjectId head;
+	public ObjectId getHead() throws GitException{
 		try {
-			head = this.resolve(Constants.HEAD);
-			
-			if (head==null)
-				return "";
-			
-	        return head.getName();
+			return this.resolve(Constants.HEAD);
 		} catch (Exception e) {
 			throw new GitException("unable to get HEAD for repository:" + this.getDirectory(), e);
 		}
@@ -206,9 +211,79 @@ public class ZeusRepository extends FileRepository{
     	return result;
 	}
 	
-	//TODO
-	public List<File> getChangedFiles(String commitHash){
-		return Collections.emptyList();
+	/**
+	 * get changed files for one specified commit.
+	 * if changed files not existed, won't return it.
+	 * 
+	 * TODO: haven't handle "DELETE" case, need to remove binary's classes accordingly...
+	 * 
+	 * @param commit
+	 * @return
+	 * @throws GitException
+	 */
+	public List<File> getChangedFiles(RevCommit commit) throws GitException{
+		List<File> fileList = new ArrayList<File>();
+		
+		RevWalk rw = new RevWalk(this);
+		
+		File root = this.getDirectory().getParentFile();
+		
+		RevCommit parent;
+		try {
+			if (commit.getParentCount()<=0){
+				return getChangedFilesForFirstCommit(commit);
+			}else{
+				parent = rw.parseCommit(commit.getParent(0).getId());
+			}
+
+			DiffFormatter df = new DiffFormatter(DisabledOutputStream.INSTANCE);
+			df.setRepository(this);
+			df.setDiffComparator(RawTextComparator.DEFAULT);
+			df.setDetectRenames(true);
+			List<DiffEntry> diffs = df.scan(parent.getTree(), commit.getTree());
+			
+			for (DiffEntry diff : diffs) {
+				File changedFile = new File(root, diff.getNewPath());
+				if (changedFile.exists()){
+					fileList.add(changedFile);
+				}
+			}
+		} catch (Exception e) {
+			throw new GitException("fail to get changed files for this commit:"+commit.getName());
+		}
+		
+		return fileList;
+	}
+	
+	/**
+	 * it's only for first commit, it will use TreeWalk to walk file tree to get changed files.
+	 * 
+	 * @param commit
+	 * @return changed file list.
+	 * @throws Exception
+	 */
+	private List<File> getChangedFilesForFirstCommit(RevCommit commit) throws Exception{
+		File root = this.getDirectory().getParentFile();
+		List<File> fileList = new ArrayList<File>();
+		
+		TreeWalk walker = createTreeWalk(commit, true);
+		while(walker.next()){
+			String fileName = walker.getPathString();
+			File file = new File(root, fileName);
+			if (file.exists()){
+				fileList.add(file);
+			}
+		}
+		
+		return fileList;
+	}
+	
+	private TreeWalk createTreeWalk(RevCommit commit, boolean isRecursive) throws Exception {
+		TreeWalk treeWalk = new TreeWalk(this);
+		treeWalk.setRecursive(isRecursive);
+		treeWalk.addTree(commit.getTree());
+
+		return treeWalk;
 	}
 	
 	/**
@@ -222,6 +297,9 @@ public class ZeusRepository extends FileRepository{
 		CheckoutCommand checkoutCmd = git.checkout();
 		Ref ref;
 		try {
+			//need to use short branch name, full branch name not work here.
+			branchName = GitUtils.getShortBranchName(branchName);
+			
 			ref = checkoutCmd.setName(branchName).call();
 			logger.info("checkout is complete");
 			if( ref != null ){
@@ -317,10 +395,14 @@ public class ZeusRepository extends FileRepository{
 		this.getConfig().setString("remote", "origin", "url", remoteUrl);
 		this.getConfig().setString("remote", "origin", "fetch", "+refs/heads/*:refs/remotes/origin/*");
 		
-        try {
+        saveConfig();
+	}
+
+	private void saveConfig() throws GitException {
+		try {
 			this.getConfig().save();
 		} catch (IOException e) {
-			throw new GitException("fail to add remote url: "+remoteUrl+" to repository: "+ this.getDirectory(), e);
+			throw new GitException("fail to save git config to repository: "+ this.getDirectory(), e);
 		}
 	}
 	
@@ -363,5 +445,29 @@ public class ZeusRepository extends FileRepository{
 		}
 		
 		return false;
+	}
+	
+	/**
+	 * get changed files for current branch, HEAD.
+	 * it is same to "git status" to list file changes.
+	 * 
+	 * FIXME: currently, only take care of UNTRACKED/MODIFIED
+	 *        Missed REMOVED.
+	 * 
+	 * @return
+	 * @throws GitException 
+	 */
+	public List<String> getChangedFiles() throws GitException{
+		try {
+			Status status = git.status().call();
+			
+			List<String> changedFiles = new ArrayList<String>();
+			changedFiles.addAll(status.getModified());
+			changedFiles.addAll(status.getUntracked());
+			
+			return changedFiles; 
+		} catch (Exception e) {
+			throw new GitException("Fail to call 'status' command.", e);
+		}
 	}
 }
