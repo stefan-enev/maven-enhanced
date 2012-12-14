@@ -485,6 +485,11 @@ public class ZeusManager {
 	        
 	        List<RevCommit> newCommits = sourceRepository.getNewCommits(headCommit);
 	        
+	        if (newCommits.size()==0){
+				logger.debug("There isn't any new commits in source repository by binary repository's 'since' commit:"
+						+ headCommit.getName());
+	        }
+	        
 	        for (RevCommit commit:newCommits){
 	        	if (needProcess(commit)){
 	        		updateBinaryWithNewCommit(commit);
