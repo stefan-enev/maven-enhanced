@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
-import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,7 +96,7 @@ public class ZeusManager {
 				logger.info("local binary repository not existed.");
 				if (ZeusUtil.isRemoteBinaryRepositoryExisted(sourceRepository.getRemoteUrl())) {
 					logger.info("remote binary repository existed.");
-					cloneBinaryRepository(false);
+					this.binaryRepository = ZeusUtil.cloneBinaryRepository(false, sourceRepository);
 
 					updateExistedLocalBinaryRepository();
 				} else {
@@ -188,7 +187,7 @@ public class ZeusManager {
 			logger.info("setup is complete");
 		} else if (ZeusUtil.isRemoteBinaryRepositoryExisted(sourceRepository
 				.getRemoteUrl())) {
-			cloneBinaryRepository(true);
+			this.binaryRepository = ZeusUtil.cloneBinaryRepository(true, sourceRepository);
 			checkoutBinaryBranch(sourceRepository.getBranch());
 			copyClassesFromBinaryRepoToSourceRepo();
 			
@@ -246,10 +245,7 @@ public class ZeusManager {
         // initialize "git" repository
 		GitUtils.initRepository(binaryRepoRoot);
 
-		// Calculate the remote url for binary repository
-        String binRemoteUrl = ZeusUtil.calculateBinaryRepositoryUrl(sourceRepository.getRemoteUrl());
-        
-        createRemoteBinaryRepository(binaryRepoRoot, binRemoteUrl);
+        this.binaryRepository = ZeusUtil.createRemoteBinaryRepository(binaryRepoRoot, sourceRepository.getRemoteUrl());
 		addReadmeForNewBinaryRepo(binaryRepoRoot);
 		
 		updateAllBinaryBranches();
@@ -295,55 +291,6 @@ public class ZeusManager {
         logger.info("added readme.md file");
 	}
 
-	private void createRemoteBinaryRepository(File binaryRepoRoot,
-			String binRemoteUrl) throws IOException, GitException {
-		ZeusUtil.createRemoteRepository(binRemoteUrl);
-
-        binaryRepository = new BinaryZeusRepository(new File(binaryRepoRoot, Constants.DOT_GIT));
-        // add "remote" repository
-        binaryRepository.addRemoteUrl(binRemoteUrl);
-        binaryRepository.addRemoteBranch(Constants.MASTER_BRANCH);
-	}
-	
-	/**
-	 * if local binary repository not existed, clone binary repository from remote.
-	 * 
-	 * @param readonly
-	 * @throws GitException
-	 */
-	private void cloneBinaryRepository( boolean readonly ) throws GitException {
-		logger.info("cloning binary repository....");
-		
-		// find the name of the "source repository"
-		String srcRepoUrl = sourceRepository.getRemoteUrl();;
-		String org = GitUtils.getOrgName(srcRepoUrl);
-		String repoName = GitUtils.getRepositoryName(srcRepoUrl);
-		String binaryRepoName = ZeusUtil.calculateBinaryRepositoryName(org, repoName);
-
-		// construct the binary repository URL
-		String giturl;
-		if( readonly == true ){
-			giturl = Constants.GITURL_BINARY_GIT_PREFIX + binaryRepoName + Constants.DOT_GIT;
-		}else{
-			giturl = Constants.GITURL_BINARY_SSH_PREFIX + binaryRepoName + Constants.DOT_GIT;
-		}
-
-		// calculate binary repository folder
-		File binaryRepoFolder = ZeusUtil.getExistedBinaryRepositoryRoot(srcRepoRoot);
-
-		logger.debug("gitUrl:"+giturl+"\n"+"binary repo root:"+binaryRepoFolder.getAbsolutePath());
-		
-		// clone the binary repository
-		Git binGit = GitUtils.cloneRepository(giturl, binaryRepoFolder);
-		try {
-			this.binaryRepository = new BinaryZeusRepository(binGit.getRepository().getDirectory());
-		} catch (IOException e) {
-			throw new GitException("Fail to initialize BinaryZeusRepository.", e);
-		}
-		
-		logger.info("binary repository cloned");
-    }
-	
 	/**
 	 * checkout specified branch for binary repository.
 	 * it try to make binary repository ready for next step(like copy classes and push).
@@ -378,8 +325,6 @@ public class ZeusManager {
 		}
 	}
 
-	 private List<String> notNeedProcessedCommits = new ArrayList<String>();
-	 
 	/**
 	 * complete following works:
 	 * 1. copy source repo's classes into binary repo.
@@ -390,7 +335,6 @@ public class ZeusManager {
 	 */
     private void updateBinaryRepository() throws Exception {
     	logger.info("updating binary repository...");
-    	
     	
         final File binRepoRoot = ZeusUtil.getExistedBinaryRepositoryRoot(srcRepoRoot);
         
@@ -427,7 +371,7 @@ public class ZeusManager {
 	        
 	        for (RevCommit commit:newCommits){
 	        	if (needProcess(commit)){
-	        		updateBinaryWithNewCommit(commit);
+	        		updateBinaryByNewCommit(commit);
 	        	}else{
 	        		logger.debug("needn't handle this commit:"+commit.getName()+"--"+commit.getFullMessage());
 	        	}
@@ -443,7 +387,9 @@ public class ZeusManager {
         
         logger.info("updated binary repository's branch:"+branch);
 	}
-
+	
+	private List<String> notNeedProcessedCommits = new ArrayList<String>();
+	
 	/**
 	 * if one commit has been processed, and prove to not need to be processed.
 	 * then ignore this commit. 
@@ -461,10 +407,10 @@ public class ZeusManager {
 	 * @param commit
 	 * @throws GitException
 	 */
-	private void updateBinaryWithNewCommit(RevCommit commit) throws GitException {
+	private void updateBinaryByNewCommit(RevCommit commit) throws GitException {
 		logger.info("updating binary repository with commit:"+commit.getFullMessage());
 		
-		final File binRepoRoot = ZeusUtil.getExistedBinaryRepositoryRoot(srcRepoRoot);
+		
 		
     	if (!binaryRepository.hasCommit(commit.getName())){
         	try {
@@ -472,14 +418,17 @@ public class ZeusManager {
         		sourceRepository.reset(commit.getName());
         		
         		if (compile()){
-        			//TODO: should only copy changed files instead of all of them.
-    				copyClassesFromSrcRepoToBinRepo(binRepoRoot);
+        			
+        			if (binaryRepository.isBare()){
+        				copyTargetFolderFromSrcRepoToBinRepo();
+        			}else{
+        				copyChangedOutputsFromSrcRepoToBinRepo(commit);
+        			}
     				
-    				List<File> srcChangedFiles = sourceRepository.getChangedFiles(commit);
     				List<String> binChangedFiles = binaryRepository.getChangedFiles();
     				
     				//TODO: only take care UNTRACKED/MODIFIED cases, ignore DELETE or RENAME cases.
-    				if (ZeusUtil.containsSourceChanges(binChangedFiles, srcChangedFiles)){
+    				if (binChangedFiles.size() > 0){
     					binaryRepository.commitNDPushAll(commit.getName());
     				}else{
     					logger.debug("Haven't found any changed files, needn't commit/push.");
@@ -504,23 +453,41 @@ public class ZeusManager {
     	
     	logger.info("updated binary repository with commit:"+commit.getFullMessage());
 	}
-	
+
 	/**
 	 * copy classes from source repo to binary repo, exclude "localobr"
 	 * 
 	 * @param binRepoRoot
 	 * @throws IOException
 	 */
-	private void copyClassesFromSrcRepoToBinRepo(final File binRepoRoot)
+	private void copyTargetFolderFromSrcRepoToBinRepo()
 			throws IOException {
 		// find the "localobr" folders and exclude them during copy
 		List<String> excludes = FileUtil.findExcludes(srcRepoRoot, "localobr");
 
 		// copy the classes
+		final File binRepoRoot = ZeusUtil
+				.getExistedBinaryRepositoryRoot(srcRepoRoot);
+
 		logger.info("copying binary files");
-		FileUtil.copyBinaryFolders("target", excludes, sourceRepository.getDirectory(), binRepoRoot);
+		FileUtil.copyBinaryFolders("target", excludes, srcRepoRoot, binRepoRoot);
 	}
     
+	/**
+	 * only copy those output files according to changed source files.
+	 * 
+	 * @param commit
+	 * @throws GitException
+	 */
+	private void copyChangedOutputsFromSrcRepoToBinRepo(RevCommit commit) throws GitException {
+		List<File> srcChangedFiles = sourceRepository.getChangedFiles(commit);
+		if (srcChangedFiles.size() == 0){
+			return;
+		}
+		
+		FileUtil.copyOutputFiles(srcRepoRoot, srcChangedFiles, binaryRepository.getDirectory().getParentFile());
+	}
+	
 //    //TODO: haven't start it yet.
 //	public void downloadDependencies(){
 //		

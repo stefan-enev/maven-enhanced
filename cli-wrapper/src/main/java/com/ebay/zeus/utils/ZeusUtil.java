@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.jgit.api.Git;
 import org.kohsuke.github.GHOrganization;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
@@ -13,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import com.ebay.zeus.exceptions.GitException;
 import com.ebay.zeus.github.GitHubClient;
+import com.ebay.zeus.repository.BinaryZeusRepository;
 import com.ebay.zeus.repository.SourceZeusRepository;
 
 public class ZeusUtil {
@@ -37,6 +39,27 @@ public class ZeusUtil {
     }
    
     /**
+     * 
+     * @param binaryRepoRoot
+     * @param binRemoteUrl
+     * @return
+     * @throws IOException
+     * @throws GitException
+     */
+	public static BinaryZeusRepository createRemoteBinaryRepository(File binaryRepoRoot,
+			String srcRemoteUrl) throws IOException, GitException {
+		String binRemoteUrl = calculateBinaryRepositoryUrl(srcRemoteUrl);
+		createRemoteRepository(binRemoteUrl);
+
+		BinaryZeusRepository binaryRepository = new BinaryZeusRepository(new File(binaryRepoRoot, Constants.DOT_GIT));
+        // add "remote" repository
+        binaryRepository.addRemoteUrl(binRemoteUrl);
+        binaryRepository.addRemoteBranch(Constants.MASTER_BRANCH);
+        
+        return binaryRepository;
+	}
+	
+    /**
      * create new remote git repository with speicified git url.
      * if has existed remote repository, do nothing. 
      * 
@@ -60,6 +83,47 @@ public class ZeusUtil {
             logger.info(repo.getUrl() + " created successfully ");
         }
 	}
+	
+	/**
+	 * if local binary repository not existed, clone binary repository from remote.
+	 * 
+	 * @param readonly
+	 * @throws GitException
+	 */
+	public static BinaryZeusRepository cloneBinaryRepository( boolean readonly, SourceZeusRepository sourceRepository ) throws GitException {
+		logger.info("cloning binary repository....");
+		
+		// find the name of the "source repository"
+		String srcRepoUrl = sourceRepository.getRemoteUrl();;
+		String org = GitUtils.getOrgName(srcRepoUrl);
+		String repoName = GitUtils.getRepositoryName(srcRepoUrl);
+		String binaryRepoName = ZeusUtil.calculateBinaryRepositoryName(org, repoName);
+
+		// construct the binary repository URL
+		String giturl;
+		if( readonly == true ){
+			giturl = Constants.GITURL_BINARY_GIT_PREFIX + binaryRepoName + Constants.DOT_GIT;
+		}else{
+			giturl = Constants.GITURL_BINARY_SSH_PREFIX + binaryRepoName + Constants.DOT_GIT;
+		}
+
+		// calculate binary repository folder
+		File binaryRepoFolder = ZeusUtil.getExistedBinaryRepositoryRoot(sourceRepository.getDirectory().getParentFile());
+
+		logger.debug("gitUrl:"+giturl+"\n"+"binary repo root:"+binaryRepoFolder.getAbsolutePath());
+		
+		// clone the binary repository
+		Git binGit = GitUtils.cloneRepository(giturl, binaryRepoFolder);
+		
+		logger.info("binary repository cloned");
+		
+		try {
+			return new BinaryZeusRepository(binGit.getRepository().getDirectory());
+		} catch (IOException e) {
+			throw new GitException("Fail to initialize BinaryZeusRepository.", e);
+		}
+		
+    }
 	
 	/**
 	 * check whether local & remote repository existed or not.
@@ -204,44 +268,44 @@ public class ZeusUtil {
     	return remoteUrl;
     }
     
-    /**
-     * check whether binary repo's changed files contains source repo's changed files.
-     * 
-     * @param binChangedFiles
-     * @param srcChangedFiles
-     * @return
-     * @throws GitException
-     */
-	public static boolean containsSourceChanges(List<String> binChangedFiles, List<File> srcChangedFiles) throws GitException{
-		for (File file:srcChangedFiles){
-			String srcFileName = file.getName();
-			if (srcFileName.endsWith(".java")){
-				srcFileName = srcFileName.substring(0, srcFileName.length()-5)+".class";
-			}
-			
-			if (containsFile(binChangedFiles, srcFileName)){
-				return true;
-			}
-		}
-		
-		return false;
-	}
-
-	/**
-	 * check whether files contains specified fileName.
-	 * 
-	 * @param files
-	 * @param fileName
-	 * @return
-	 * @throws GitException
-	 */
-	public static boolean containsFile(List<String> files, String fileName) throws GitException {
-		for (String filePath:files){
-			if (filePath.contains(fileName)){
-				return true;
-			}
-		}
-		
-		return false;
-	}
+//    /**
+//     * check whether binary repo's changed files contains source repo's changed files.
+//     * 
+//     * @param binChangedFiles
+//     * @param srcChangedFiles
+//     * @return
+//     * @throws GitException
+//     */
+//	public static boolean containsSourceChanges(List<String> binChangedFiles, List<File> srcChangedFiles) throws GitException{
+//		for (File file:srcChangedFiles){
+//			String srcFileName = file.getName();
+//			if (srcFileName.endsWith(".java")){
+//				srcFileName = srcFileName.substring(0, srcFileName.length()-5)+".class";
+//			}
+//			
+//			if (containsFile(binChangedFiles, srcFileName)){
+//				return true;
+//			}
+//		}
+//		
+//		return false;
+//	}
+//
+//	/**
+//	 * check whether files contains specified fileName.
+//	 * 
+//	 * @param files
+//	 * @param fileName
+//	 * @return
+//	 * @throws GitException
+//	 */
+//	public static boolean containsFile(List<String> files, String fileName) throws GitException {
+//		for (String filePath:files){
+//			if (filePath.contains(fileName)){
+//				return true;
+//			}
+//		}
+//		
+//		return false;
+//	}
 }

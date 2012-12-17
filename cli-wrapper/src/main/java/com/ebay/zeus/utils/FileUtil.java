@@ -1,15 +1,19 @@
 package com.ebay.zeus.utils;
 
-import com.google.common.io.Files;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.filefilter.IOFileFilter;
-
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.IOFileFilter;
+import org.apache.commons.io.filefilter.NameFileFilter;
+import org.apache.commons.io.filefilter.TrueFileFilter;
+
+import com.google.common.io.Files;
 
 public class FileUtil {
 
@@ -149,8 +153,8 @@ public class FileUtil {
 	}
 	
     public static void copyBinaryFolders(String pattern, List<String> exclusionList, File source, File destination) throws IOException {
-        File root = source.getParentFile();
-        Collection<File> files = FileUtil.findDirectoriesThatEndWith(root, pattern);
+//        File root = source.getParentFile();
+        Collection<File> files = FileUtil.findDirectoriesThatEndWith(source, pattern);
 
 		FilenameFilter filter = new FilenameFilter() {
 			public boolean accept(File dir, String name) {
@@ -158,10 +162,10 @@ public class FileUtil {
 			}
 		};
 
-        int pathlength = root.getCanonicalPath().length();
+        int pathlength = source.getCanonicalPath().length();
         for (File f : files) {
             // construct the directory to copied
-			if (f.getCanonicalPath().startsWith(root.getCanonicalPath())) {
+			if (f.getCanonicalPath().startsWith(source.getCanonicalPath())) {
                 // get the path that is additional
 				String pathfraction  = f.getCanonicalPath().substring(pathlength);
                 File d = new File(destination, pathfraction );
@@ -305,4 +309,103 @@ public class FileUtil {
 		
 		return excludes;
 	}
+    
+    /**
+     * copy source repo's output files to binary repo.
+     * 
+     * @param srcRepoRoot
+     * @param srcChangedFiles : source repo's changed source files.
+     * @param binaryRepoRoot
+     */
+	public static void copyOutputFiles(File srcRepoRoot, List<File> srcChangedFiles,
+			File binaryRepoRoot) {
+		List<File> candidateFiles = getOutputFiles(srcRepoRoot, srcChangedFiles);
+		String srcRepoRootPath = srcRepoRoot.getAbsolutePath();
+		
+		for (File srcFile:candidateFiles){
+			File destFile = null;
+			String srcFilePath = srcFile.getAbsolutePath();
+			int idx = srcFilePath.indexOf(srcRepoRootPath);
+			if (idx != -1){
+				destFile = new File(binaryRepoRoot, srcFilePath.substring(idx));
+			}
+			
+			try {
+				FileUtils.copyFile(srcFile, destFile);
+			} catch (IOException e) {
+				// TODO log it, shouldn't break the process.
+			}
+		}
+		
+	}
+
+	/**
+	 * get output files according to changed source files 
+	 * 
+	 * @param srcRepoRoot
+	 * @param srcChangedFiles
+	 * @return
+	 */
+	private static List<File> getOutputFiles(File srcRepoRoot,	List<File> srcChangedFiles) {
+		Collection<File> pomFiles = listPomFiles(srcRepoRoot);
+		List<File> candidateFiles = new ArrayList<File>();
+		
+		for (File srcFile:srcChangedFiles){
+			candidateFiles.addAll(getTargetFiles(srcFile, pomFiles));
+		}
+		
+		return candidateFiles;
+	}
+	
+	/**
+     * get their output files in "target" folder.
+     * 
+     * @param srcFile : source file.
+     * @param pomFiles : list of pom file.
+     * @return
+     */
+    public static Collection<File> getTargetFiles(File srcFile, Collection<File> pomFiles) {
+		File targetFolder = null;
+		for (File pom:pomFiles){
+			File projectRoot = pom.getParentFile();
+			
+			if (srcFile.getAbsolutePath().contains(projectRoot.getAbsolutePath())){
+				targetFolder = new File(projectRoot, "target");
+				break;
+			}
+		}
+		
+		String fileName = srcFile.getName();
+		if (fileName.endsWith(".java")){
+			fileName = fileName.substring(0, fileName.length()-5);
+		}
+		
+		if (targetFolder != null){
+			return listFiles(targetFolder, srcFile.getName());
+		}
+		
+		return Collections.emptyList();
+	}
+    
+    /**
+     * list all files that filename equals specified filename.
+     * 
+     * @param dir
+     * @param fileName
+     * @return
+     */
+    public static Collection<File> listFiles(File dir, String fileName){
+    	NameFileFilter filter = new NameFileFilter(fileName);
+    	return FileUtils.listFiles(dir, filter, TrueFileFilter.INSTANCE);
+    }
+    
+    /**
+     * list all pom.xml for specified parent directory.
+     * 
+     * @param dir
+     * @return
+     */
+    public static Collection<File> listPomFiles(File dir){
+    	return listFiles(dir, "pom.xml");
+    }
 }
