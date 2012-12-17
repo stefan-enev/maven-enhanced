@@ -4,9 +4,7 @@ import java.io.File;
 import java.io.IOException;
 
 import org.eclipse.jgit.api.CheckoutResult;
-import org.eclipse.jgit.api.ResetCommand.ResetType;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.storage.file.FileBasedConfig;
 
 import com.ebay.zeus.exceptions.GitException;
 

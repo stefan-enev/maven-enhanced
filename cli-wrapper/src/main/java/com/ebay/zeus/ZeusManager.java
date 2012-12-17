@@ -33,13 +33,9 @@ public class ZeusManager {
     private File root;
 	private SourceZeusRepository sourceRepository;
     private BinaryZeusRepository binaryRepository;
-    
     private File srcRepoRoot;
-    
     private boolean isLocalBinaryRepoExisted = false;
     
-//    private static MappingServiceClient mappingServiceClient;
-
 	public ZeusManager(File root) throws GitException {
 		if (root.canRead() && root.isDirectory()){
             this.root = root;
@@ -66,16 +62,13 @@ public class ZeusManager {
 			
 			srcRepoRoot = sourceRepository.getDirectory().getParentFile();
 			
-//			mappingServiceClient = new MappingServiceClient();
 			logger.info("initialized basic information.");
 		} catch (IOException e) {
 			throw new GitException("Fail to initialize source repository or binary repository.", e);
 		}
 	}
 	
-	public void createOrUpdateBinaryRepository()
-			throws GitException {
-
+	public void createOrUpdateBinaryRepository() throws GitException {
 		logger.info("starting to create/update binary repository");
 		
 		// assume the current directory the "root" of the project
@@ -106,11 +99,6 @@ public class ZeusManager {
 					logger.info("remote binary repository existed.");
 					cloneBinaryRepository(false);
 
-					// TODO: 1. if branch existed, checkout it, if no, should
-					// checkout new local branch
-					// 2. Then copy source repo's classes into binary repo and
-					// upload changes
-					
 					updateExistedLocalBinaryRepository();
 				} else {
 					logger.info("remote binary repository not existed, create it.");
@@ -150,14 +138,6 @@ public class ZeusManager {
 		// TODO: ideally we need 'git fetch' and record what is
 		// fetched, which is then processed
 
-		// TODO: calculate how many new branches/commits have been
-		// created since the last fetch on source repo
-		// zmanager.findNewCommits();
-
-		// TODO: figure out the new commits and process each one of
-		// them
-		// zmanager.processNewCommits();
-
 		// TODO: remove this after implementing above steps. this is
 		// temporary
 		// get the latest by "git pull" on "source" and "binary".
@@ -187,6 +167,13 @@ public class ZeusManager {
 		return false;
 	}
 	
+	/**
+	 * setup project, it will try to get pre-compiled classes
+	 * and copy them into source repository's target folders.
+	 * 
+	 * @throws GitException
+	 * @throws IOException
+	 */
 	public void setupProject() throws GitException, IOException {
 		// TODO: download dependencies
 		
@@ -488,8 +475,11 @@ public class ZeusManager {
         			//TODO: should only copy changed files instead of all of them.
     				copyClassesFromSrcRepoToBinRepo(binRepoRoot);
     				
+    				List<File> srcChangedFiles = sourceRepository.getChangedFiles(commit);
+    				List<String> binChangedFiles = binaryRepository.getChangedFiles();
+    				
     				//TODO: only take care UNTRACKED/MODIFIED cases, ignore DELETE or RENAME cases.
-    				if (containsSourceChanges(commit)){
+    				if (ZeusUtil.containsSourceChanges(binChangedFiles, srcChangedFiles)){
     					binaryRepository.commitNDPushAll(commit.getName());
     				}else{
     					logger.debug("Haven't found any changed files, needn't commit/push.");
@@ -515,35 +505,6 @@ public class ZeusManager {
     	logger.info("updated binary repository with commit:"+commit.getFullMessage());
 	}
 	
-	private boolean containsSourceChanges(RevCommit commit) throws GitException{
-		List<File> srcChangedFiles = sourceRepository.getChangedFiles(commit);
-		
-		for (File file:srcChangedFiles){
-			String srcFileName = file.getName();
-			if (srcFileName.endsWith(".java")){
-				srcFileName = srcFileName.substring(0, srcFileName.length()-5)+".class";
-			}
-			
-			if (containsFile(srcFileName)){
-				return true;
-			}
-		}
-		
-		return false;
-	}
-
-	private boolean containsFile(String fileName) throws GitException {
-		List<String> binChangedFiles = binaryRepository.getChangedFiles();
-		
-		for (String filePath:binChangedFiles){
-			if (filePath.contains(fileName)){
-				return true;
-			}
-		}
-		
-		return false;
-	}
-
 	/**
 	 * copy classes from source repo to binary repo, exclude "localobr"
 	 * 

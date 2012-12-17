@@ -203,4 +203,45 @@ public class ZeusUtil {
     	}
     	return remoteUrl;
     }
+    
+    /**
+     * check whether binary repo's changed files contains source repo's changed files.
+     * 
+     * @param binChangedFiles
+     * @param srcChangedFiles
+     * @return
+     * @throws GitException
+     */
+	public static boolean containsSourceChanges(List<String> binChangedFiles, List<File> srcChangedFiles) throws GitException{
+		for (File file:srcChangedFiles){
+			String srcFileName = file.getName();
+			if (srcFileName.endsWith(".java")){
+				srcFileName = srcFileName.substring(0, srcFileName.length()-5)+".class";
+			}
+			
+			if (containsFile(binChangedFiles, srcFileName)){
+				return true;
+			}
+		}
+		
+		return false;
+	}
+
+	/**
+	 * check whether files contains specified fileName.
+	 * 
+	 * @param files
+	 * @param fileName
+	 * @return
+	 * @throws GitException
+	 */
+	public static boolean containsFile(List<String> files, String fileName) throws GitException {
+		for (String filePath:files){
+			if (filePath.contains(fileName)){
+				return true;
+			}
+		}
+		
+		return false;
+	}
 }
