@@ -51,18 +51,19 @@ public class SourceZeusRepository extends ZeusRepository {
 			return allCommits;
 		}
 		
-		String sinceCommitHash = sinceCommit.getName();
+		String sinceCommitHash = sinceCommit.getFullMessage();
 
 		int idx = 0;
 		for (int i=0; i<allCommits.size(); i++){
 			RevCommit curCommit = allCommits.get(i);
 			if (sinceCommitHash.equals(curCommit.getName())){
 				idx = i;
+				break;
 			}
 		}
 		
 		if (idx != 0){
-			return allCommits.subList(0, idx);
+			return allCommits.subList(idx+1, allCommits.size());
 		}
 		
 		return Collections.emptyList();

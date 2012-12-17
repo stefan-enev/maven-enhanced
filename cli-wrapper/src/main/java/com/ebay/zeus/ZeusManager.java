@@ -55,7 +55,7 @@ public class ZeusManager {
 			logger.info("initializing basic information...");
 			
 			this.sourceRepository = new SourceZeusRepository(new File(root, Constants.DOT_GIT));
-			File sourceRepoRoot = sourceRepository.getDirectory();
+			File sourceRepoRoot = sourceRepository.getDirectory().getParentFile();
 
 			if (ZeusUtil.isLocalBinaryRepositoryExisted(sourceRepoRoot)) {
 				File binaryRepoRoot = ZeusUtil.getExistedBinaryRepositoryRoot(sourceRepoRoot);
@@ -265,6 +265,14 @@ public class ZeusManager {
         createRemoteBinaryRepository(binaryRepoRoot, binRemoteUrl);
 		addReadmeForNewBinaryRepo(binaryRepoRoot);
 		
+		updateAllBinaryBranches();
+        
+        logger.info("Completed to create binary repository.");
+    }
+
+	private void updateAllBinaryBranches() throws GitException {
+		notNeedProcessedCommits.clear();
+		
 		List<String> allBranches = sourceRepository.getAllBranches();
 		
 		//update master first.
@@ -276,13 +284,8 @@ public class ZeusManager {
 			}
 		}
 		
-//		addSrcRepoClassesToBinRepo(binaryRepoRoot);
 		binaryRepository.push(false);
-		
-//        uploadMappingData(sourceRepository.getRemoteUrl(), binRemoteUrl, sourceRepository.getBranch());
-        
-        logger.info("Completed to create binary repository.");
-    }
+	}
 
 	/**
 	 * add readme file into binary repo.
@@ -315,57 +318,6 @@ public class ZeusManager {
         binaryRepository.addRemoteBranch(Constants.MASTER_BRANCH);
 	}
 	
-//	/**
-//	 * add source repository's classes to binary repository.
-//	 * 1. copy classes.
-//	 * 2. addAll/commit/push
-//	 * 
-//	 * FIXME:
-//	 * create new binary repo, needn't "mvn compile"?
-//	 * 
-//	 * @param binaryRepoRoot
-//	 * @return
-//	 * @throws IOException
-//	 * @throws GitException
-//	 */
-//	private void addSrcRepoClassesToBinRepo(File binaryRepoRoot)
-//			throws IOException, GitException {
-//		logger.info("adding classes from source repository to binary repository...");
-//		
-//		// read the branch from "source" repository
-//		String branchname = sourceRepository.getBranch();
-//
-//		// create a "branch"
-//		if( !branchname.toLowerCase().equals(Constants.MASTER_BRANCH) ){
-//			binaryRepository.checkoutNewBranch(branchname);
-//		}
-//
-//		copyClassesFromSrcRepoToBinRepo(binaryRepoRoot);
-//
-//		binaryRepository.commitNDPushAll(sourceRepository.getHead());
-//	}
-	
-//	/**
-//	 * upload mapping data onto mapping service.
-//	 * 
-//	 * @param sourceRepoUrl
-//	 * @param binRepoUrl
-//	 * @param branchname
-//	 * @throws Exception
-//	 */
-//	private void uploadMappingData(String sourceRepoUrl, String binRepoUrl, String branchname) throws Exception {
-//		
-//		final String sourceRepoHeadHash = sourceRepository.getHead();
-//		final String binRepoHeadHash = binaryRepository.getHead();
-//        final String binRepoBranchName = binaryRepository.getBranch();
-//
-//        logger.info("Updating Bin Repo Service with the new changes - POST new object to service");
-//        
-//   	    mappingServiceClient.post(sourceRepoUrl, branchname, sourceRepoHeadHash, binRepoUrl, binRepoBranchName, binRepoHeadHash);
-//   	    
-//   	    logger.info("Updated Bin Repo Service with the new changes");
-//	}
-
 	/**
 	 * if local binary repository not existed, clone binary repository from remote.
 	 * 
@@ -451,18 +403,14 @@ public class ZeusManager {
 	 */
     private void updateBinaryRepository() throws Exception {
     	logger.info("updating binary repository...");
-    	notNeedProcessedCommits.clear();
+    	
     	
         final File binRepoRoot = ZeusUtil.getExistedBinaryRepositoryRoot(srcRepoRoot);
         
 		logger.info("SourceRepository = " + srcRepoRoot.getCanonicalPath()
 					+ "\nBinaryRepository = " + binRepoRoot.getCanonicalPath());
 
-        List<String> allBranches = sourceRepository.getAllBranches();
-        
-        for (String branch:allBranches){
-        	updateBinaryBranch(branch);
-        }
+		updateAllBinaryBranches();
         
 		logger.debug("commit/pushed changes onto remote binary repo:"
 					+ binaryRepository.getRemoteUrl());
@@ -534,17 +482,14 @@ public class ZeusManager {
     	if (!binaryRepository.hasCommit(commit.getName())){
         	try {
         		//TODO: add precheck, whether changed files for this commit should be processed, if no, skip it.
-//        		List<File> changedFiles = sourceRepository.getChangedFiles(commit);
-        		
         		sourceRepository.reset(commit.getName());
         		
-        		//TODO: should only compile changed files...
         		if (compile()){
         			//TODO: should only copy changed files instead of all of them.
     				copyClassesFromSrcRepoToBinRepo(binRepoRoot);
     				
     				//TODO: only take care UNTRACKED/MODIFIED cases, ignore DELETE or RENAME cases.
-    				if (binaryRepository.getChangedFiles().size() > 0){
+    				if (containsSourceChanges(commit)){
     					binaryRepository.commitNDPushAll(commit.getName());
     				}else{
     					logger.debug("Haven't found any changed files, needn't commit/push.");
@@ -561,11 +506,42 @@ public class ZeusManager {
 				notNeedProcessedCommits.add(commit.getName());
 			}finally{
 				//rollback
+	        	sourceRepository.reset();
 	        	sourceRepository.pull();
+	        	binaryRepository.reset();
 			}
         }
     	
     	logger.info("updated binary repository with commit:"+commit.getFullMessage());
+	}
+	
+	private boolean containsSourceChanges(RevCommit commit) throws GitException{
+		List<File> srcChangedFiles = sourceRepository.getChangedFiles(commit);
+		
+		for (File file:srcChangedFiles){
+			String srcFileName = file.getName();
+			if (srcFileName.endsWith(".java")){
+				srcFileName = srcFileName.substring(0, srcFileName.length()-5)+".class";
+			}
+			
+			if (containsFile(srcFileName)){
+				return true;
+			}
+		}
+		
+		return false;
+	}
+
+	private boolean containsFile(String fileName) throws GitException {
+		List<String> binChangedFiles = binaryRepository.getChangedFiles();
+		
+		for (String filePath:binChangedFiles){
+			if (filePath.contains(fileName)){
+				return true;
+			}
+		}
+		
+		return false;
 	}
 
 	/**

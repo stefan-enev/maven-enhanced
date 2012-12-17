@@ -152,7 +152,7 @@ public class ZeusRepository extends FileRepository{
 	 */
 	public RevCommit getHeadCommit() throws GitException{
 		try {
-			return this.getAllCommits().get(0);
+			return this.getAllCommits().get(this.getAllCommits().size()-1);
 		} catch (GitException e) {
 			throw new GitException("fail to get commit history for repository" + this.getDirectory().getParent(), e);
 		}
@@ -307,7 +307,8 @@ public class ZeusRepository extends FileRepository{
 				return checkoutCmd.getResult();
 			}
 		} catch (Exception e) {
-			throw new GitException("unable to checkout branch " + branchName, e);
+			return checkoutRemoteBranch(branchName);
+//			throw new GitException("unable to checkout branch " + branchName, e);
 		}
 		
 		return null;
@@ -358,6 +359,15 @@ public class ZeusRepository extends FileRepository{
 		} catch (Exception e) {
 			throw new GitException("fail to reset commit:"+commitHash+" to repository:"+this.getDirectory().getParent(), e);
 		}
+	}
+	
+	/**
+	 * git reset --hard HEAD
+	 * 
+	 * @throws GitException
+	 */
+	public void reset() throws GitException{
+		reset(this.getHead().getName());
 	}
 	
 	/**
