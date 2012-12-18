@@ -360,8 +360,6 @@ public class ZeusManager {
 			sourceRepository.checkoutBranch(branch);
 			
 			//TODO: need to figure out right commit hash to checkout binary repo.
-			
-			
 			checkoutBinaryBranch(branch);
 	        RevCommit headCommit = binaryRepository.getHeadCommit();
 	        

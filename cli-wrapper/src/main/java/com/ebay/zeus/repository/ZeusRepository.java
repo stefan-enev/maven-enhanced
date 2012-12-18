@@ -60,13 +60,17 @@ import com.ebay.zeus.utils.GitUtils;
 public class ZeusRepository extends FileRepository{
 
 	public final Logger logger = LoggerFactory.getLogger(this.getClass());
-	public Git git;
+	protected Git git;
 	
 	public ZeusRepository(File gitDir) throws IOException {
 		super(gitDir);
 		git = Git.wrap(this);
 
 		git.open(gitDir);
+	}
+	
+	public Git getGit(){
+		return git;
 	}
 	
 	public String getName(){
@@ -484,30 +488,4 @@ public class ZeusRepository extends FileRepository{
 		}
 	}
 	
-	/**
-	 * find out which branch that specified commit come from.
-	 * 
-	 * @param commit
-	 * @return branch name.
-	 * @throws GitException 
-	 */
-	public String getFromBranch(RevCommit commit) throws GitException{
-		try {
-			Collection<ReflogEntry> entries = git.reflog().call();
-			for (ReflogEntry entry:entries){
-				if (!entry.getOldId().getName().equals(commit.getName())){
-					continue;
-				}
-				
-				CheckoutEntry checkOutEntry = entry.parseCheckout();
-				if (checkOutEntry != null){
-					return checkOutEntry.getFromBranch();
-				}
-			}
-			
-			return null;
-		} catch (Exception e) {
-			throw new GitException("fail to get ref log.", e);
-		}
-	}
 }

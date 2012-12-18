@@ -20,7 +20,7 @@ public class SourceZeusRepositoryTest extends BaseZeusRepositoryTestCase{
 		super.setup();
 		
 		repo = new SourceZeusRepository(gitDir);
-		git = repo.git;
+		git = repo.getGit();
 	}
 	
 	@After
