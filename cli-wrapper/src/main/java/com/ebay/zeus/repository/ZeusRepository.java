@@ -3,6 +3,7 @@ package com.ebay.zeus.repository;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -28,8 +29,10 @@ import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.RefComparator;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.storage.file.CheckoutEntry;
 import org.eclipse.jgit.storage.file.FileBasedConfig;
 import org.eclipse.jgit.storage.file.FileRepository;
+import org.eclipse.jgit.storage.file.ReflogEntry;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.util.RefMap;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
@@ -478,6 +481,33 @@ public class ZeusRepository extends FileRepository{
 			return changedFiles; 
 		} catch (Exception e) {
 			throw new GitException("Fail to call 'status' command.", e);
+		}
+	}
+	
+	/**
+	 * find out which branch that specified commit come from.
+	 * 
+	 * @param commit
+	 * @return branch name.
+	 * @throws GitException 
+	 */
+	public String getFromBranch(RevCommit commit) throws GitException{
+		try {
+			Collection<ReflogEntry> entries = git.reflog().call();
+			for (ReflogEntry entry:entries){
+				if (!entry.getOldId().getName().equals(commit.getName())){
+					continue;
+				}
+				
+				CheckoutEntry checkOutEntry = entry.parseCheckout();
+				if (checkOutEntry != null){
+					return checkOutEntry.getFromBranch();
+				}
+			}
+			
+			return null;
+		} catch (Exception e) {
+			throw new GitException("fail to get ref log.", e);
 		}
 	}
 }

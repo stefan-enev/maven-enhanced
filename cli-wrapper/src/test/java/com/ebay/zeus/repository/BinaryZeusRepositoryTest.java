@@ -53,7 +53,7 @@ public class BinaryZeusRepositoryTest extends BaseZeusRepositoryTestCase {
 	public void getHead() throws Exception{
 		addCommits();
 		
-		assertEquals(commit2.getName(), repo.getHead());
+		assertEquals(commit2.getName(), repo.getHead().getName());
 	}
 	
 	@Test
@@ -63,16 +63,24 @@ public class BinaryZeusRepositoryTest extends BaseZeusRepositoryTestCase {
 
 		//pull
 		repo.pull();
-		assertEquals("0066255c3e06f8ba2e61755033f4252f04f2fc1c", repo.getHead());
+		assertEquals("0066255c3e06f8ba2e61755033f4252f04f2fc1c", repo.getHead().getName());
 		
 		//getAllBranches
 		List<String> branchList = repo.getAllBranches();
-		assertEquals(4, branchList.size());
+		assertEquals(3, branchList.size());
 		
 		//checkoutBranch
 		repo.checkoutBranch("origin/branch2");
 		List<RevCommit> commits = repo.getAllCommits();
 		
+		RevCommit testCommit = null;
+		for (RevCommit commit:commits){
+			if ("0066255c3e06f8ba2e61755033f4252f04f2fc1c".equals(commit.getName())){
+				testCommit = commit;
+			}
+		}
+		
+		assertEquals("master", repo.getFromBranch(testCommit));
 		assertEquals(3, commits.size());
 		
 		//checkoutRemoteBranch

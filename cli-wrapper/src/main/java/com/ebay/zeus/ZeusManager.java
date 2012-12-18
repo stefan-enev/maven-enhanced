@@ -359,6 +359,9 @@ public class ZeusManager {
 		try {
 			sourceRepository.checkoutBranch(branch);
 			
+			//TODO: need to figure out right commit hash to checkout binary repo.
+			
+			
 			checkoutBinaryBranch(branch);
 	        RevCommit headCommit = binaryRepository.getHeadCommit();
 	        
@@ -410,11 +413,8 @@ public class ZeusManager {
 	private void updateBinaryByNewCommit(RevCommit commit) throws GitException {
 		logger.info("updating binary repository with commit:"+commit.getFullMessage());
 		
-		
-		
     	if (!binaryRepository.hasCommit(commit.getName())){
         	try {
-        		//TODO: add precheck, whether changed files for this commit should be processed, if no, skip it.
         		sourceRepository.reset(commit.getName());
         		
         		if (compile()){

@@ -7,7 +7,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
+import org.apache.commons.collections.set.ListOrderedSet;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
 import org.apache.commons.io.filefilter.NameFileFilter;
@@ -319,7 +321,7 @@ public class FileUtil {
      */
 	public static void copyOutputFiles(File srcRepoRoot, List<File> srcChangedFiles,
 			File binaryRepoRoot) {
-		List<File> candidateFiles = getOutputFiles(srcRepoRoot, srcChangedFiles);
+		Set<File> candidateFiles = getOutputFiles(srcRepoRoot, srcChangedFiles);
 		String srcRepoRootPath = srcRepoRoot.getAbsolutePath();
 		
 		for (File srcFile:candidateFiles){
@@ -327,7 +329,7 @@ public class FileUtil {
 			String srcFilePath = srcFile.getAbsolutePath();
 			int idx = srcFilePath.indexOf(srcRepoRootPath);
 			if (idx != -1){
-				destFile = new File(binaryRepoRoot, srcFilePath.substring(idx));
+				destFile = new File(binaryRepoRoot, srcFilePath.substring(idx+srcRepoRootPath.length()));
 			}
 			
 			try {
@@ -346,9 +348,9 @@ public class FileUtil {
 	 * @param srcChangedFiles
 	 * @return
 	 */
-	private static List<File> getOutputFiles(File srcRepoRoot,	List<File> srcChangedFiles) {
+	private static Set<File> getOutputFiles(File srcRepoRoot,	List<File> srcChangedFiles) {
 		Collection<File> pomFiles = listPomFiles(srcRepoRoot);
-		List<File> candidateFiles = new ArrayList<File>();
+		Set<File> candidateFiles = new ListOrderedSet();
 		
 		for (File srcFile:srcChangedFiles){
 			candidateFiles.addAll(getTargetFiles(srcFile, pomFiles));
@@ -377,11 +379,11 @@ public class FileUtil {
 		
 		String fileName = srcFile.getName();
 		if (fileName.endsWith(".java")){
-			fileName = fileName.substring(0, fileName.length()-5);
+			fileName = fileName.substring(0, fileName.length()-5)+".class";
 		}
 		
 		if (targetFolder != null){
-			return listFiles(targetFolder, srcFile.getName());
+			return listFiles(targetFolder, fileName);
 		}
 		
 		return Collections.emptyList();
