@@ -14,6 +14,12 @@ import org.slf4j.LoggerFactory;
 import com.ebay.zeus.exceptions.GitException;
 import com.ebay.zeus.utils.Constants;
 
+/**
+ * build out branch checkout graph.
+ * 
+ * @author yunfwang@ebay.com
+ *
+ */
 public class BranchGraphBuilder {
 	public final Logger logger = LoggerFactory.getLogger(this.getClass());
 	

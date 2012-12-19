@@ -17,7 +17,6 @@
 package com.ebay.zeus;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Calendar;
 
 import org.apache.commons.cli.ParseException;
@@ -27,7 +26,6 @@ import org.slf4j.LoggerFactory;
 import com.ebay.zeus.cli.CliArgsParser;
 import com.ebay.zeus.cli.InputParams;
 import com.ebay.zeus.cli.RunMode;
-import com.ebay.zeus.exceptions.GitException;
 import com.ebay.zeus.utils.ZeusUtil;
 
 /**
@@ -105,10 +103,7 @@ public class ZeusCli {
 			if (input.getMode().equals(RunMode.SETUP)) {
 				zmanager.setupProject();
 			}
-		} catch (GitException e) {
-			logger.error(e.getMessage(), e);
-			return;
-		} catch (IOException e) {
+		} catch (Exception e) {
 			logger.error(e.getMessage(), e);
 			return;
 		}

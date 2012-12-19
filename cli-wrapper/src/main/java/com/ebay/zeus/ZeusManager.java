@@ -2,22 +2,18 @@ package com.ebay.zeus;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.List;
 
-import org.eclipse.jgit.revwalk.RevCommit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ebay.zeus.exceptions.GitException;
-import com.ebay.zeus.exceptions.ProcessException;
+import com.ebay.zeus.repository.BinaryRepositoryProcessor;
 import com.ebay.zeus.repository.BinaryZeusRepository;
+import com.ebay.zeus.repository.SourceRepositoryProcessor;
 import com.ebay.zeus.repository.SourceZeusRepository;
 import com.ebay.zeus.utils.Constants;
-import com.ebay.zeus.utils.FileUtil;
 import com.ebay.zeus.utils.GitUtils;
-import com.ebay.zeus.utils.MavenUtil;
 import com.ebay.zeus.utils.ZeusUtil;
 
 /**
@@ -143,27 +139,9 @@ public class ZeusManager {
 		gitpull();
 
 		// update binary repo
-		updateBinaryRepository();
+		processBinaryRepository();
 		
 		logger.info("Updated existed binary repository");
-	}
-
-	/**
-	 * execute "mvn compile" in root folder.
-	 * if there aren't pom file in root folder, won't execute "mvn compile"
-	 * 
-	 * @return true:executed compile; false:hasn't executed compile.
-	 * @throws ProcessException
-	 */
-	private boolean compile() throws ProcessException {
-		File pomFile = new File(root, "pom.xml");
-		if (pomFile.exists()){
-			MavenUtil.executeMvnCommand("compile", root, System.out);
-			
-			return true;
-		}
-		
-		return false;
 	}
 	
 	/**
@@ -173,42 +151,9 @@ public class ZeusManager {
 	 * @throws GitException
 	 * @throws IOException
 	 */
-	public void setupProject() throws GitException, IOException {
-		// TODO: download dependencies
-		
-		// read the source project
-        // TODO: RGIROTI Remove next line at some point - refactor this to a test case somewhere
-        // root = new File("D:\\dev\\devex\\binrepo-devex");
-		
-		if (ZeusUtil.isBinaryRepositoryExisted(sourceRepository)) {
-			checkoutBinaryBranch(sourceRepository.getBranch());
-			copyClassesFromBinaryRepoToSourceRepo();
-			
-			logger.info("setup is complete");
-		} else if (ZeusUtil.isRemoteBinaryRepositoryExisted(sourceRepository
-				.getRemoteUrl())) {
-			this.binaryRepository = ZeusUtil.cloneBinaryRepository(true, sourceRepository);
-			checkoutBinaryBranch(sourceRepository.getBranch());
-			copyClassesFromBinaryRepoToSourceRepo();
-			
-			logger.info("setup is complete");
-		} else {
-			// TODO: anything we can do?
-			logger.info("Binary repository not available. exiting...");
-		}
-		
-		// Get the binary classes and populate project "target" folders
-	}
-	
-	private void copyClassesFromBinaryRepoToSourceRepo() throws GitException{
-		try {
-			FileUtil.copyBinaryFolders(binaryRepository.getDirectory()
-					.getParentFile(), sourceRepository.getDirectory()
-					.getParentFile(), Constants.DOT_GIT);
-		} catch (IOException e) {
-			throw new GitException(
-					"Fail to copy binary repository's folders into source repository.",	e);
-		}
+	public void setupProject() throws Exception {
+		SourceRepositoryProcessor processor = new SourceRepositoryProcessor(sourceRepository, binaryRepository);
+		processor.process();
 	}
 	
 	/**
@@ -248,27 +193,10 @@ public class ZeusManager {
         this.binaryRepository = ZeusUtil.createRemoteBinaryRepository(binaryRepoRoot, sourceRepository.getRemoteUrl());
 		addReadmeForNewBinaryRepo(binaryRepoRoot);
 		
-		updateAllBinaryBranches();
+		processBinaryRepository();
         
         logger.info("Completed to create binary repository.");
     }
-
-	private void updateAllBinaryBranches() throws GitException {
-		notNeedProcessedCommits.clear();
-		
-		List<String> allBranches = sourceRepository.getAllBranches();
-		
-		//update master first.
-		updateBinaryBranch(Constants.MASTER_BRANCH);
-		
-		for (String branch:allBranches){
-			if (!branch.contains(Constants.MASTER_BRANCH)){
-				updateBinaryBranch(branch);
-			}
-		}
-		
-		binaryRepository.push(false);
-	}
 
 	/**
 	 * add readme file into binary repo.
@@ -292,199 +220,14 @@ public class ZeusManager {
 	}
 
 	/**
-	 * checkout specified branch for binary repository.
-	 * it try to make binary repository ready for next step(like copy classes and push).
-	 * if remote branch not existed, create it.
-	 * 
-	 * @param branchName
-	 * @throws GitException
-	 */
-	private void checkoutBinaryBranch(String branchName) throws GitException {
-		logger.info("checking out binary repository's branch:"+branchName+"...");
-		
-		branchName = GitUtils.getShortBranchName(branchName);
-		
-		if (branchName.toLowerCase().equals(Constants.MASTER_BRANCH)) {
-			return;
-		}
-		
-		// check whether the branch exists
-		boolean isBranchExisted = binaryRepository.isBranchExisted(branchName);
-		
-		if( !isBranchExisted ){
-			binaryRepository.checkoutNewBranch(branchName);
-		}else{
-			// check the current branch in binary repository
-			try {
-				if( !binaryRepository.getBranch().equals(branchName) ){
-					binaryRepository.checkoutBranch(branchName);
-				}
-			} catch (IOException e) {
-				throw new GitException("can't checkout remote branch("+branchName+") into local.", e);
-			}
-		}
-	}
-
-	/**
-	 * complete following works:
-	 * 1. copy source repo's classes into binary repo.
-	 * 2. push binary repo's changes into remote. 
-	 * 
+	 * Call processor to update binary repository.
 	 * 
 	 * @throws Exception
 	 */
-    private void updateBinaryRepository() throws Exception {
-    	logger.info("updating binary repository...");
-    	
-        final File binRepoRoot = ZeusUtil.getExistedBinaryRepositoryRoot(srcRepoRoot);
-        
-		logger.info("SourceRepository = " + srcRepoRoot.getCanonicalPath()
-					+ "\nBinaryRepository = " + binRepoRoot.getCanonicalPath());
-
-		updateAllBinaryBranches();
-        
-		logger.debug("commit/pushed changes onto remote binary repo:"
-					+ binaryRepository.getRemoteUrl());
-        logger.info("Binary repository updated.");
+    private void processBinaryRepository() throws Exception {
+		BinaryRepositoryProcessor processor = new BinaryRepositoryProcessor(sourceRepository, binaryRepository);
+		processor.process();
     }
-    
-    /**
-     * update specified branch by its source repo's compiled classes
-     * 
-     * @param branch
-     */
-	private void updateBinaryBranch(String branch) {
-		logger.info("updating binary repository's branch:"+branch);
-		
-		try {
-			sourceRepository.checkoutBranch(branch);
-			
-			//TODO: need to figure out right commit hash to checkout binary repo.
-			checkoutBinaryBranch(branch);
-	        RevCommit headCommit = binaryRepository.getHeadCommit();
-	        
-	        List<RevCommit> newCommits = sourceRepository.getNewCommits(headCommit);
-	        
-	        if (newCommits.size()==0){
-				logger.debug("There isn't any new commits in source repository by binary repository's 'since' commit:"
-						+ headCommit.getName());
-	        }
-	        
-	        for (RevCommit commit:newCommits){
-	        	if (needProcess(commit)){
-	        		updateBinaryByNewCommit(commit);
-	        	}else{
-	        		logger.debug("needn't handle this commit:"+commit.getName()+"--"+commit.getFullMessage());
-	        	}
-	        }
-	        
-	        //rollback to "master"
-        	sourceRepository.checkoutBranch(Constants.MASTER_BRANCH);
-        	binaryRepository.checkoutBranch(Constants.MASTER_BRANCH);
-		} catch (Exception e) {
-			//shouldn't break others branch.
-			logger.error(e.getMessage(), e);
-		}
-        
-        logger.info("updated binary repository's branch:"+branch);
-	}
-	
-	private List<String> notNeedProcessedCommits = new ArrayList<String>();
-	
-	/**
-	 * if one commit has been processed, and prove to not need to be processed.
-	 * then ignore this commit. 
-	 * 
-	 * @param commit
-	 * @return
-	 */
-	private boolean needProcess(RevCommit commit) {
-		return !notNeedProcessedCommits.contains(commit.getName());
-	}
-
-	/**
-	 * update binary repo with specified commit
-	 * 
-	 * @param commit
-	 * @throws GitException
-	 */
-	private void updateBinaryByNewCommit(RevCommit commit) throws GitException {
-		logger.info("updating binary repository with commit:"+commit.getFullMessage());
-		
-    	if (!binaryRepository.hasCommit(commit.getName())){
-        	try {
-        		sourceRepository.reset(commit.getName());
-        		
-        		if (compile()){
-        			
-        			if (binaryRepository.isBare()){
-        				copyTargetFolderFromSrcRepoToBinRepo();
-        			}else{
-        				copyChangedOutputsFromSrcRepoToBinRepo(commit);
-        			}
-    				
-    				List<String> binChangedFiles = binaryRepository.getChangedFiles();
-    				
-    				//TODO: only take care UNTRACKED/MODIFIED cases, ignore DELETE or RENAME cases.
-    				if (binChangedFiles.size() > 0){
-    					binaryRepository.commitNDPushAll(commit.getName());
-    				}else{
-    					logger.debug("Haven't found any changed files, needn't commit/push.");
-    					notNeedProcessedCommits.add(commit.getName());
-    				}
-        		}else{
-        			logger.debug("No pom file found in directory"+sourceRepository.getDirectory().getParent());
-        			notNeedProcessedCommits.add(commit.getName());
-        		}
-        		
-			} catch (Exception e) {
-				//shouldn't break others commits
-				logger.error(e.getMessage(), e);
-				notNeedProcessedCommits.add(commit.getName());
-			}finally{
-				//rollback
-	        	sourceRepository.reset();
-	        	sourceRepository.pull();
-	        	binaryRepository.reset();
-			}
-        }
-    	
-    	logger.info("updated binary repository with commit:"+commit.getFullMessage());
-	}
-
-	/**
-	 * copy classes from source repo to binary repo, exclude "localobr"
-	 * 
-	 * @param binRepoRoot
-	 * @throws IOException
-	 */
-	private void copyTargetFolderFromSrcRepoToBinRepo()
-			throws IOException {
-		// find the "localobr" folders and exclude them during copy
-		List<String> excludes = FileUtil.findExcludes(srcRepoRoot, "localobr");
-
-		// copy the classes
-		final File binRepoRoot = ZeusUtil
-				.getExistedBinaryRepositoryRoot(srcRepoRoot);
-
-		logger.info("copying binary files");
-		FileUtil.copyBinaryFolders("target", excludes, srcRepoRoot, binRepoRoot);
-	}
-    
-	/**
-	 * only copy those output files according to changed source files.
-	 * 
-	 * @param commit
-	 * @throws GitException
-	 */
-	private void copyChangedOutputsFromSrcRepoToBinRepo(RevCommit commit) throws GitException {
-		List<File> srcChangedFiles = sourceRepository.getChangedFiles(commit);
-		if (srcChangedFiles.size() == 0){
-			return;
-		}
-		
-		FileUtil.copyOutputFiles(srcRepoRoot, srcChangedFiles, binaryRepository.getDirectory().getParentFile());
-	}
 	
 //    //TODO: haven't start it yet.
 //	public void downloadDependencies(){
