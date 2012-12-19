@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 import java.io.File;
 import java.util.List;
 
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.junit.After;
 import org.junit.Before;
@@ -40,6 +41,7 @@ public class SourceZeusRepositoryTest extends BaseZeusRepositoryTestCase{
 		List<RevCommit> allcommits = repo.getAllCommits();
 		
 		assertEquals("9ce0aaf2ffd10192ebac6122a07055e2910f49de", allcommits.get(0).getName());
+		
 		List<RevCommit> commits = repo.getNewCommits(allcommits.get(0));
 		
 		assertEquals(0, commits.size());

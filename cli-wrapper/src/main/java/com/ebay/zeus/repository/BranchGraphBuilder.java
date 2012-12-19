@@ -1,11 +1,13 @@
 package com.ebay.zeus.repository;
 
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Stack;
 
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.storage.file.CheckoutEntry;
-import org.eclipse.jgit.storage.file.ReflogEntry;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,24 +69,17 @@ public class BranchGraphBuilder {
 		repo.checkoutBranch(branch);
 		
 		List<RevCommit> allCommits = repo.getAllCommits();
-		for (RevCommit commit:allCommits){
-			String fromBranch = getFromBranch(commit);
-			if (fromBranch != null){
-				BranchGraphEntry entry = new BranchGraphEntry();
-				entry.setBranchName(branch);
-				entry.setFromBranchName(fromBranch);
-				entry.setStartCommit(commit);
-				
-				logger.info("found branch graph entry:{" + branch + ", "
-						+ commit.getName() + ", " + fromBranch + "}");
-				
-				return entry;
-			}
+		
+		BranchGraphEntry entry = getFromBranch(branch, allCommits);
+		if (entry == null){
+			logger.info("Haven't found any cutting commit for branch:"+branch);
+			return null;
 		}
 		
-		logger.info("Haven't found any cutting commit for branch:"+branch);
+		logger.info("found branch graph entry:{" + branch + ", "
+				+ entry.getStartCommit().getName() + ", " + entry.getFromBranchName() + "}");
 		
-		return null;
+		return entry;
 	}
 
 	/**
@@ -94,27 +89,124 @@ public class BranchGraphBuilder {
 	 * @return branch name.
 	 * @throws GitException 
 	 */
-	public String getFromBranch(RevCommit commit) throws GitException{
-		logger.debug("Trying to find cutting ref for commit:"+commit.getName());
+	public BranchGraphEntry getFromBranch(String curBranch, List<RevCommit> commits) throws GitException{
+		logger.debug("Trying to find cutting ref for branch:"+curBranch);
 		
 		try {
-			Collection<ReflogEntry> entries = repo.getGit().reflog().call();
-			for (ReflogEntry entry:entries){
-				if (!entry.getOldId().getName().equals(commit.getName())){
+			Stack<BranchGraphEntry> entries = new Stack<BranchGraphEntry>();
+			
+			RevCommit prevCommit = commits.get(0);
+			String prevBranch = Constants.MASTER_BRANCH;
+			int prevBranchesNumber = 0;
+			
+			for (RevCommit commit:commits){
+				List<String> branches = getBranches(commit.getName());
+				
+				if (branches.size() == 0){
 					continue;
 				}
 				
-				CheckoutEntry checkOutEntry = entry.parseCheckout();
-				if (checkOutEntry != null){
+				if (prevBranchesNumber != 0 && branches.size() != prevBranchesNumber){
+					if (prevCommit == commits.get(0)){
+						return null;
+					}
 					
-					logger.debug("found cutting ref, from branch:"+checkOutEntry.getFromBranch());
-					return checkOutEntry.getFromBranch();
+					BranchGraphEntry entry = new BranchGraphEntry();
+					entry.setStartCommit(prevCommit);
+					entry.setFromBranchName(prevBranch);
+					entry.setBranchName(curBranch);
+					
+					entries.push(entry);
 				}
+				
+				prevCommit = commit;
+				prevBranch = getOrientedBranch(branches, curBranch);
+				prevBranchesNumber = branches.size();
+			}
+			
+			if (entries.size() > 0){
+				return entries.pop();
 			}
 			
 			return null;
 		} catch (Exception e) {
 			throw new GitException("fail to get ref log.", e);
 		}
+	}
+	
+	private String getOrientedBranch(List<String> branches, String curBranch) {
+		for (String branch:branches){
+			if (branch.contains(Constants.MASTER_BRANCH)){
+				return branch;
+			}
+			
+			if (branch.contains(curBranch)){
+				continue;
+			}
+		}
+		
+		return branches.get(0)!=null?branches.get(0):null;
+	}
+
+	/**
+	 * get branches those contains specified commit.
+	 * 
+	 * @param commitHash
+	 * @return short branch name list.
+	 * @throws GitException
+	 */
+	public List<String> getBranches(String commitHash) throws GitException{
+		List<String> branchNames = new ArrayList<String>();
+		List<Ref> refs = getBranchRefs(commitHash);
+		for (Ref ref:refs){
+			branchNames.add(getBranch(ref.getName()));
+		}
+		
+		return branchNames;
+	}
+	
+	/**
+	 * get branches those contains specified commit.
+	 * it only get those remotes refs
+	 * 
+	 * @param commit
+	 * @return refs
+	 * @throws GitException
+	 */
+	private List<Ref> getBranchRefs(String commitHash) throws GitException{
+		List<Ref> refs = new ArrayList<Ref>();
+		
+		try{
+			RevWalk walk = new RevWalk(repo);
+			RevCommit commit = walk.parseCommit(repo.resolve(commitHash + "^0"));
+			for (Map.Entry<String, Ref> e : repo.getAllRefs().entrySet()){
+				if (e.getKey().startsWith(org.eclipse.jgit.lib.Constants.R_REMOTES)){
+					if (walk.isMergedInto(commit, walk.parseCommit(e.getValue().getObjectId()))){
+						refs.add(e.getValue());
+						
+//						logger.debug("Ref " + e.getValue().getName()+ " contains commit:" + commitHash);
+					}
+				}
+			}
+			
+			return refs;
+		}catch(Exception e){
+			throw new GitException("fail to get branches that contains specified commit.", e);
+		}
+		
+	}
+	
+	/**
+	 * get short branch name from full branch name.
+	 * from "refs/remotes/origin/branch1" to "origin/branch1"
+	 * 
+	 * @param fullBranchName
+	 * @return
+	 * @throws GitException
+	 */
+	private String getBranch(String fullBranchName) throws GitException {
+		if (fullBranchName != null)
+			return repo.shortenRefName(fullBranchName);
+		return fullBranchName;
 	}
 }
