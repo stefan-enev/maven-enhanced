@@ -227,6 +227,7 @@ public class ZeusManager {
     private void processBinaryRepository() throws Exception {
 		BinaryRepositoryProcessor processor = new BinaryRepositoryProcessor(sourceRepository, binaryRepository);
 		processor.process();
+		gitpull();
     }
 	
 //    //TODO: haven't start it yet.

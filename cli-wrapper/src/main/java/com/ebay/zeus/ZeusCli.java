@@ -86,7 +86,7 @@ public class ZeusCli {
 		File root = new File(System.getProperty("user.dir"));
 		
 		String inputRepoRoot = input.getSourceRepoRoot();
-		if (ZeusUtil.isLocalRepoExisted(new File(inputRepoRoot))){
+		if (inputRepoRoot!=null && ZeusUtil.isLocalRepoExisted(new File(inputRepoRoot))){
 			root = new File(inputRepoRoot);
 		}
 		

@@ -116,7 +116,7 @@
 									<mainClass>com.ebay.zeus.ZeusCli</mainClass>
 								</transformer>
 							</transformers>
-							<finalName>zeus</finalName>
+							<finalName>zeus-0.3</finalName>
 							<createSourcesJar>true</createSourcesJar>
 							<!--
 					<filters>
