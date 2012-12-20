@@ -108,7 +108,7 @@ public class ZeusUtil {
 		}
 
 		// calculate binary repository folder
-		File binaryRepoFolder = ZeusUtil.getExistedBinaryRepositoryRoot(sourceRepository.getDirectory().getParentFile());
+		File binaryRepoFolder = ZeusUtil.getBinaryRepositoryRoot(sourceRepository.getDirectory().getParentFile());
 
 		logger.debug("gitUrl:"+giturl+"\n"+"binary repo root:"+binaryRepoFolder.getAbsolutePath());
 		
@@ -133,7 +133,7 @@ public class ZeusUtil {
 	 * @throws GitException
 	 */
 	public static boolean isBinaryRepositoryExisted(SourceZeusRepository sourceRepository) throws GitException{
-        boolean result = ZeusUtil.isLocalBinaryRepositoryExisted(sourceRepository.getDirectory());
+        boolean result = isLocalBinaryRepositoryExisted(sourceRepository.getDirectory());
 		
 		// return result && isRepoPresentInGit();
         boolean remoteRepoCheck = false;
