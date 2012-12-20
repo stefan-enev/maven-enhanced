@@ -3,7 +3,6 @@ package com.ebay.zeus.repository;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -29,10 +28,8 @@ import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.RefComparator;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.storage.file.CheckoutEntry;
 import org.eclipse.jgit.storage.file.FileBasedConfig;
 import org.eclipse.jgit.storage.file.FileRepository;
-import org.eclipse.jgit.storage.file.ReflogEntry;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.util.RefMap;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
@@ -379,6 +376,9 @@ public class ZeusRepository extends FileRepository{
 	
 	/**
 	 * get current branch's all commits
+	 * 
+	 * sorted it by creation date time.
+	 * 
 	 * @return commit list
 	 * @throws GitException
 	 */
@@ -400,6 +400,27 @@ public class ZeusRepository extends FileRepository{
 		} catch (Exception e) {
 			throw new GitException("", e);
 		}
+	}
+	
+	/**
+	 * get previous (older) commit hash for specified commit hash.
+	 * 
+	 * @param commitHash
+	 * @return previous commit hash
+	 * @throws GitException 
+	 */
+	public String getPreviousCommit(String commitHash) throws GitException{
+		List<RevCommit> allCommits = getAllCommits();
+		RevCommit prevCommit = null;
+		for (RevCommit commit:allCommits){
+			if (commitHash.equals(commit.getName())){
+				return prevCommit.getName();
+			}
+			
+			prevCommit = commit;
+		}
+		
+		return null;
 	}
 	
 	/**

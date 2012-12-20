@@ -31,16 +31,18 @@ public class SourceRepositoryProcessor extends ZeusRepositoryProcessor{
 		// read the source project
         // TODO: RGIROTI Remove next line at some point - refactor this to a test case somewhere
         // root = new File("D:\\dev\\devex\\binrepo-devex");
+		BranchGraphEntry branchEntry = new BranchGraphEntry();
+		branchEntry.setBranchName(srcRepo.getBranch());
 		
 		if (ZeusUtil.isBinaryRepositoryExisted(srcRepo)) {
-			checkoutBinaryBranch(srcRepo.getBranch());
+			checkoutBinaryBranch(branchEntry);
 			copyClassesFromBinaryRepoToSourceRepo();
 			
 			logger.info("setup is complete");
 		} else if (ZeusUtil.isRemoteBinaryRepositoryExisted(srcRepo
 				.getRemoteUrl())) {
 			this.binRepo = ZeusUtil.cloneBinaryRepository(true, srcRepo);
-			checkoutBinaryBranch(srcRepo.getBranch());
+			checkoutBinaryBranch(branchEntry);
 			copyClassesFromBinaryRepoToSourceRepo();
 			
 			logger.info("setup is complete");

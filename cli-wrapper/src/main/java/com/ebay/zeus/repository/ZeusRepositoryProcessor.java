@@ -3,6 +3,7 @@ package com.ebay.zeus.repository;
 import java.io.File;
 import java.io.IOException;
 
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +33,9 @@ public abstract class ZeusRepositoryProcessor {
 	 * @param branchName
 	 * @throws GitException
 	 */
-	protected void checkoutBinaryBranch(String branchName) throws GitException {
+	protected void checkoutBinaryBranch(BranchGraphEntry branchEntry) throws GitException {
+		String branchName = branchEntry.getBranchName();
+		
 		logger.info("checking out binary repository's branch:"+branchName+"...");
 		
 		branchName = GitUtils.getShortBranchName(branchName);
@@ -45,17 +48,57 @@ public abstract class ZeusRepositoryProcessor {
 		boolean isBranchExisted = binRepo.isBranchExisted(branchName);
 		
 		if( !isBranchExisted ){
+			//checkout 'from' branch and reset to start commit hash first
+			String fromBranchName = branchEntry.getFromBranchName();
+			if (!binRepo.isBranchExisted(fromBranchName)){
+				throw new GitException("Trying to checkout new binary branch:"
+						+ branchName + ", but found its 'from' branch"
+						+ fromBranchName + " doesn't existed.");
+			}
+			
+			fromBranchName = GitUtils.getShortBranchName(fromBranchName);
+			binRepo.checkoutBranch(fromBranchName);
+			
+			RevCommit startCommit = branchEntry.getStartCommit();
+			String binaryStartCommitHash = getBinaryStartCommitHash(
+					fromBranchName, startCommit.getName());
+			binRepo.reset(binaryStartCommitHash);
+			
+			if (!getCurrentBranch(srcRepo).equals(branchName)){
+				srcRepo.checkoutBranch(branchName);
+			}
+			
+			//Then checkout new binary branch.
 			binRepo.checkoutNewBranch(branchName);
 		}else{
-			// check the current branch in binary repository
-			try {
-				if( !binRepo.getBranch().equals(branchName) ){
-					binRepo.checkoutBranch(branchName);
-				}
-			} catch (IOException e) {
-				throw new GitException("can't checkout remote branch("+branchName+") into local.", e);
+			if( !getCurrentBranch(binRepo).equals(branchName) ){
+				binRepo.checkoutBranch(branchName);
 			}
 		}
+	}
+	
+	private String getCurrentBranch(ZeusRepository repo) throws GitException{
+		try {
+			return repo.getBranch();
+		} catch (IOException e) {
+			throw new GitException(e);
+		}
+	}
+
+	private String getBinaryStartCommitHash(String fromBranchName,
+			String startCommitHash) throws GitException {
+		String binaryStartCommitHash = binRepo.getBinaryCommit(startCommitHash);
+		if (binaryStartCommitHash == null){
+			//find previous commit for start commit.
+			srcRepo.checkoutBranch(fromBranchName);
+			srcRepo.reset(startCommitHash);
+			
+			String prevCommit = srcRepo.getPreviousCommit(startCommitHash);
+			
+			return getBinaryStartCommitHash(fromBranchName, prevCommit);
+		}
+		
+		return binaryStartCommitHash;
 	}
 	
 	abstract public void process() throws Exception;

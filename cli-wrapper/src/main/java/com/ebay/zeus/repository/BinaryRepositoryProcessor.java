@@ -83,7 +83,7 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 		try {
 			srcRepo.checkoutBranch(branchName);
 			
-			checkoutBinaryBranch(branchName);
+			checkoutBinaryBranch(branchEntry);
 	        RevCommit headCommit = binRepo.getHeadCommit();
 	        
 	        List<RevCommit> newCommits = srcRepo.getNewCommits(headCommit);

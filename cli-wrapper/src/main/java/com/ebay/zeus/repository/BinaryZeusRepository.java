@@ -2,6 +2,7 @@ package com.ebay.zeus.repository;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 import org.eclipse.jgit.api.CheckoutResult;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -118,6 +119,31 @@ public class BinaryZeusRepository extends ZeusRepository{
 		this.push(false);
 		
 		return result;
+	}
+	
+	/**
+	 * get its binary repo's commit hash according to source repo's commit hash.
+	 * it bases on this fact: 
+	 * for binary repo, each commit's full message should be source repo's commit hash.
+	 * 
+	 * @param sourceRepoCommitHash
+	 * @return binary repo's commit hash
+	 * @throws GitException 
+	 */
+	public String getBinaryCommit(String sourceRepoCommitHash) throws GitException{
+		if (sourceRepoCommitHash == null){
+			return null;
+		}
+		
+		List<RevCommit> commits = this.getAllCommits();
+		for (RevCommit commit:commits){
+			String message = commit.getFullMessage();
+			if (sourceRepoCommitHash.equals(message)){
+				return commit.getName();
+			}
+		}
+		
+		return null;
 	}
 
 }
