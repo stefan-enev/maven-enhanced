@@ -62,7 +62,9 @@ public class SourceRepositoryProcessor extends ZeusRepositoryProcessor{
 		
 		//reset binary repo's commit
 		RevCommit headCommit = srcRepo.getHeadCommit();
-		String binaryCommitHash = binRepo.getBinaryCommit(headCommit.getName());
+		String binaryCommitHash = this.getBinaryStartCommitHash(
+				branchEntry.getBranchName(), headCommit.getName());
+		
 		if (binaryCommitHash == null){
 			binRepo.checkoutBranch(Constants.MASTER_BRANCH);
 			throw new GitException("binary repository hasn't specified commit:"+headCommit.getName()+". Exiting Zeus...");

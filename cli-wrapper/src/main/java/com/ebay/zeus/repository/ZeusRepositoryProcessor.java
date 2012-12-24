@@ -85,13 +85,13 @@ public abstract class ZeusRepositoryProcessor {
 		}
 	}
 
-	private String getBinaryStartCommitHash(String fromBranchName,
+	public String getBinaryStartCommitHash(String fromBranchName,
 			String startCommitHash) throws GitException {
 		String binaryStartCommitHash = binRepo.getBinaryCommit(startCommitHash);
 		if (binaryStartCommitHash == null){
 			//find previous commit for start commit.
 			srcRepo.checkoutBranch(fromBranchName);
-			srcRepo.reset(startCommitHash);
+//			srcRepo.reset(startCommitHash);
 			
 			String prevCommit = srcRepo.getPreviousCommit(startCommitHash);
 			
