@@ -3,8 +3,12 @@ package com.ebay.zeus.repository;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.diff.DiffEntry.ChangeType;
 import org.eclipse.jgit.revwalk.RevCommit;
 
 import com.ebay.zeus.exceptions.GitException;
@@ -12,6 +16,7 @@ import com.ebay.zeus.exceptions.ProcessException;
 import com.ebay.zeus.utils.Constants;
 import com.ebay.zeus.utils.FileUtil;
 import com.ebay.zeus.utils.MavenUtil;
+import com.ebay.zeus.utils.ProjectEntry;
 import com.ebay.zeus.utils.ZeusUtil;
 
 /**
@@ -188,14 +193,121 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 	 * @throws GitException
 	 */
 	private void copyChangedOutputsFromSrcRepoToBinRepo(RevCommit commit) throws GitException {
-		List<File> srcChangedFiles = srcRepo.getChangedFiles(commit);
-		if (srcChangedFiles.size() == 0){
+		List<File> firstCommitChangedFiles = srcRepo.getFirstCommitChangedFiles(commit);
+		
+		List<DiffEntry> srcChangedFiles = srcRepo.getChangedFiles(commit);
+		if (firstCommitChangedFiles.size()==0 
+				&& srcChangedFiles.size() == 0){
 			return;
 		}
 		
-		FileUtil.copyOutputFiles(srcRepoRoot, srcChangedFiles, binRepo.getDirectory().getParentFile());
+		if (srcChangedFiles.size() != 0){
+			processChangedFiles(srcRepoRoot, srcChangedFiles, binRepo.getDirectory().getParentFile());
+		}else{
+			FileUtil.copyOutputFiles(srcRepoRoot, firstCommitChangedFiles, binRepo.getDirectory().getParentFile());
+		}
+		
 	}
 	
+	/**
+	 * process changed files (ADD/MODIFY/DELETE/RENAME/COPY)
+	 * 
+	 * @param srcRepoRoot
+	 * @param srcChangedFiles
+	 * @param parentFile
+	 */
+	private void processChangedFiles(File srcRepoRoot,	List<DiffEntry> srcChangedFiles, File parentFile) {
+		List<File> addedFiles = new ArrayList<File>();
+		List<String> deletedFiles = new ArrayList<String>();
+		Map<String, String> renamedFiles = new HashMap<String, String>();
+		Map<String, String> copiedFiles = new HashMap<String, String>();
+		
+		for (DiffEntry entry : srcChangedFiles) {
+			ChangeType type = entry.getChangeType();
+			switch (type) {
+			case ADD:
+				addedFiles.add(new File(srcRepoRoot, entry.getNewPath()));
+				break;
+			case MODIFY:
+				addedFiles.add(new File(srcRepoRoot, entry.getNewPath()));
+				break;
+			case DELETE:
+				deletedFiles.add(entry.getOldPath());
+				break;
+			case RENAME:
+				renamedFiles.put(entry.getOldPath(), entry.getNewPath());
+				break;
+			case COPY:
+				copiedFiles.put(entry.getOldPath(), entry.getNewPath());
+			}
+		}
+		
+		processAddedFiles(addedFiles);
+		processDeletedFiles(deletedFiles);
+		processRenamedFiles(renamedFiles);
+		processCopiedFiles(copiedFiles);
+	}
+
+	private void processCopiedFiles(Map<String, String> copiedFiles) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	private void processRenamedFiles(Map<String, String> renamedFiles) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	/**
+	 * delete binary repo's target files according to source repo's deleted source files.
+	 * 
+	 * @param deletedFiles
+	 */
+	private void processDeletedFiles(List<String> deletedFiles) {
+		
+		for (String filePath:deletedFiles){
+			File targetFile = getBinaryTargetFile(filePath);
+			if (targetFile!=null && targetFile.exists()){
+				targetFile.delete();
+			}
+		}
+		
+	}
+
+	/**
+	 * get binary repo's target file by source repo's deleted file path.
+	 * 
+	 * @param filePath
+	 * @return
+	 */
+	private File getBinaryTargetFile(String filePath) {
+		File srcFile = new File(srcRepoRoot, filePath);
+		List<ProjectEntry> entries = FileUtil.getProjectEntries(srcRepoRoot);
+		
+		File srcTargetFile = FileUtil.getTargetFile(srcFile, entries);
+		String targetFilePath = getRelativePath(srcTargetFile);
+		return new File(binRepo.getDirectory().getParentFile(), targetFilePath);
+	}
+	
+	private String getRelativePath(File file){
+		String srcRepoRootPath = srcRepoRoot.getAbsolutePath();
+		String filePath = file.getAbsolutePath();
+		if (filePath.startsWith(srcRepoRootPath)){
+			return filePath.substring(srcRepoRootPath.length());
+		}
+		
+		return null;
+	}
+
+	/**
+	 * for ADD/MODIFIED files, copy their target files simply.
+	 * 
+	 * @param addedFiles
+	 */
+	private void processAddedFiles(List<File> addedFiles) {
+		FileUtil.copyOutputFiles(srcRepoRoot, addedFiles, binRepo.getDirectory().getParentFile());
+	}
+
 	/**
 	 * execute "mvn compile" in root folder.
 	 * if there aren't pom file in root folder, won't execute "mvn compile"

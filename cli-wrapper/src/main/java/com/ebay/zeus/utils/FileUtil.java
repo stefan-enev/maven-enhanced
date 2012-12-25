@@ -321,6 +321,11 @@ public class FileUtil {
      */
 	public static void copyOutputFiles(File srcRepoRoot, List<File> srcChangedFiles,
 			File binaryRepoRoot) {
+		
+		if (srcChangedFiles.size() == 0){
+			return;
+		}
+		
 		Set<File> candidateFiles = getOutputFiles(srcRepoRoot, srcChangedFiles);
 		String srcRepoRootPath = srcRepoRoot.getAbsolutePath();
 		
@@ -349,32 +354,58 @@ public class FileUtil {
 	 * @return
 	 */
 	private static Set<File> getOutputFiles(File srcRepoRoot,	List<File> srcChangedFiles) {
-		Collection<File> pomFiles = listPomFiles(srcRepoRoot);
+		if (srcChangedFiles.size()==0){
+			return Collections.emptySet();
+		}
+		
+		List<ProjectEntry> entries = getProjectEntries(srcRepoRoot);
+		
+		if (entries.size() == 0){
+			return Collections.emptySet();
+		}
+		
 		Set<File> candidateFiles = new ListOrderedSet();
 		
 		for (File srcFile:srcChangedFiles){
-			candidateFiles.addAll(getTargetFiles(srcFile, pomFiles));
+			File targetFile = getTargetFile(srcFile, entries);
+			if (targetFile != null && targetFile.exists()){
+				candidateFiles.add(targetFile);
+			}
 		}
 		
 		return candidateFiles;
 	}
 	
 	/**
+	 * get all project entries, contains project's meta-info.
+	 * like source folder, project root path etc.
+	 * 
+	 * @param repoRoot
+	 * @return
+	 */
+	public static List<ProjectEntry> getProjectEntries(File repoRoot){
+		Collection<File> pomFiles = listPomFiles(repoRoot);
+		List<ProjectEntry> entries = new ArrayList<ProjectEntry>();
+		for (File pom:pomFiles){
+			ProjectEntry entry = new ProjectEntry(pom.getParentFile());
+			entries.add(entry);
+		}
+		
+		return entries;
+	}
+	
+	/**
      * get their output files in "target" folder.
      * 
      * @param srcFile : source file.
-     * @param pomFiles : list of pom file.
+     * @param projectEntries : list of ProjectEntry.
      * @return
      */
-    public static Collection<File> getTargetFiles(File srcFile, Collection<File> pomFiles) {
-		File targetFolder = null;
-		for (File pom:pomFiles){
-			File projectRoot = pom.getParentFile();
-			
-			if (srcFile.getAbsolutePath().contains(projectRoot.getAbsolutePath())){
-				targetFolder = new File(projectRoot, "target");
-				break;
-			}
+    public static File getTargetFile(File srcFile, List<ProjectEntry> projectEntries) {
+		ProjectEntry entry = getProjectEntry(srcFile, projectEntries);
+		
+		if (entry == null){
+			return null;
 		}
 		
 		String fileName = srcFile.getName();
@@ -382,14 +413,22 @@ public class FileUtil {
 			fileName = fileName.substring(0, fileName.length()-5)+".class";
 		}
 		
-		if (targetFolder != null){
-			return listFiles(targetFolder, fileName);
-		}
-		
-		return Collections.emptyList();
+		String filePath = entry.getPackagePath(srcFile)+fileName;
+		return new File(entry.getTargetFolder(), filePath);
 	}
     
-    /**
+    public static ProjectEntry getProjectEntry(File srcFile,
+			List<ProjectEntry> projectEntries) {
+		for (ProjectEntry entry:projectEntries){
+			if (entry.belongToSourceFolder(srcFile)){
+				return entry;
+			}
+		}
+		
+		return null;
+	}
+
+	/**
      * list all files that filename equals specified filename.
      * 
      * @param dir

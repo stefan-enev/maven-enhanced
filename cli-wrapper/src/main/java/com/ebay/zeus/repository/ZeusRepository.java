@@ -225,38 +225,47 @@ public class ZeusRepository extends FileRepository{
 	 * @return
 	 * @throws GitException
 	 */
-	public List<File> getChangedFiles(RevCommit commit) throws GitException{
-		List<File> fileList = new ArrayList<File>();
-		
+	public List<DiffEntry> getChangedFiles(RevCommit commit) throws GitException{
 		RevWalk rw = new RevWalk(this);
-		
-		File root = this.getDirectory().getParentFile();
 		
 		RevCommit parent;
 		try {
 			if (commit.getParentCount()<=0){
-				return getChangedFilesForFirstCommit(commit);
-			}else{
-				parent = rw.parseCommit(commit.getParent(0).getId());
+				return Collections.emptyList();
 			}
+			
+			parent = rw.parseCommit(commit.getParent(0).getId());
 
 			DiffFormatter df = new DiffFormatter(DisabledOutputStream.INSTANCE);
 			df.setRepository(this);
 			df.setDiffComparator(RawTextComparator.DEFAULT);
 			df.setDetectRenames(true);
-			List<DiffEntry> diffs = df.scan(parent.getTree(), commit.getTree());
 			
-			for (DiffEntry diff : diffs) {
-				File changedFile = new File(root, diff.getNewPath());
-				if (changedFile.exists()){
-					fileList.add(changedFile);
-				}
+			return df.scan(parent.getTree(), commit.getTree());
+		} catch (Exception e) {
+			throw new GitException("fail to get changed files for this commit:"+commit.getName());
+		}
+	}
+	
+	/**
+	 * get changed files for first commit(not parent commits).
+	 * if changed files not existed, won't return it.
+	 * 
+	 * @param commit
+	 * @return
+	 * @throws GitException
+	 */
+	public List<File> getFirstCommitChangedFiles(RevCommit commit) throws GitException{
+
+		try {
+			if (commit.getParentCount()<=0){
+				return getChangedFilesForFirstCommit(commit);
 			}
 		} catch (Exception e) {
 			throw new GitException("fail to get changed files for this commit:"+commit.getName());
 		}
 		
-		return fileList;
+		return Collections.emptyList();
 	}
 	
 	/**
@@ -502,6 +511,19 @@ public class ZeusRepository extends FileRepository{
 			List<String> changedFiles = new ArrayList<String>();
 			changedFiles.addAll(status.getModified());
 			changedFiles.addAll(status.getUntracked());
+			
+			return changedFiles; 
+		} catch (Exception e) {
+			throw new GitException("Fail to call 'status' command.", e);
+		}
+	}
+	
+	public List<String> getRemovedFiles() throws GitException{
+		try {
+			Status status = git.status().call();
+			
+			List<String> changedFiles = new ArrayList<String>();
+			changedFiles.addAll(status.getRemoved());
 			
 			return changedFiles; 
 		} catch (Exception e) {

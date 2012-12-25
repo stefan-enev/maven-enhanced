@@ -5,7 +5,7 @@ import static org.junit.Assert.assertEquals;
 import java.io.File;
 import java.util.List;
 
-import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.junit.After;
 import org.junit.Before;
@@ -46,11 +46,13 @@ public class SourceZeusRepositoryTest extends BaseZeusRepositoryTestCase{
 		
 		assertEquals(0, commits.size());
 		
-		List<File> files = repo.getChangedFiles(allcommits.get(0));
+		List<DiffEntry> files = repo.getChangedFiles(allcommits.get(0));
 		
 		File root = repo.getDirectory().getParentFile();
 		File expectedFile = new File(root, "test1.txt");
 		
-		assertEquals(expectedFile.getAbsolutePath(), files.get(0).getAbsolutePath());
+		assertEquals(expectedFile.getAbsolutePath(),
+				new File(repo.getDirectory().getParentFile(), files.get(0)
+						.getNewPath()).getAbsolutePath());
 	}
 }
