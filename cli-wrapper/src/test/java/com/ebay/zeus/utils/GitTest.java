@@ -14,8 +14,6 @@ import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.FetchResult;
 import org.junit.Test;
 
-import com.ebay.zeus.git.commands.ShowRef;
-
 public class GitTest {
 	
 	@Test
@@ -49,24 +47,4 @@ public class GitTest {
 		}
 	}
 	
-	@Test
-	public void showref(){
-		
-		FileRepositoryBuilder repobuiler = new FileRepositoryBuilder();
-		Repository repository;
-		
-		try {
-			repository = repobuiler.findGitDir( new File("s:\\git\\demo\\search_raptor") ).build();
-			ShowRef showref = new ShowRef(repository);
-			
-			showref.run();
-			
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
 }
