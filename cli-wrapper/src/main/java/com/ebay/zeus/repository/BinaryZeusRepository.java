@@ -21,8 +21,8 @@ public class BinaryZeusRepository extends ZeusRepository{
 	 * 
 	 * @throws GitException
 	 */
-	public void addAll() throws GitException{
-		add(".");
+	public void addAll(boolean update) throws GitException{
+		add(".", update);
 	}
 	
 	/**
@@ -31,11 +31,11 @@ public class BinaryZeusRepository extends ZeusRepository{
 	 * @param filePattern
 	 * @throws GitException
 	 */
-	public void add(String filePattern) throws GitException{
+	public void add(String filePattern, boolean update) throws GitException{
 		try {
 			git.add()
 			.addFilepattern(filePattern)
-			.setUpdate(false).call();
+			.setUpdate(update).call();
 		} catch (Exception e) {
 			throw new GitException("fail to add all changes.", e);
 		}
@@ -70,7 +70,8 @@ public class BinaryZeusRepository extends ZeusRepository{
 	}
 	
 	public RevCommit commitNDPushAll(String commitHash) throws GitException{
-		addAll();
+		addAll(false);
+		addAll(true);
         RevCommit commit = commit(commitHash);
         push(false);
         
@@ -84,8 +85,8 @@ public class BinaryZeusRepository extends ZeusRepository{
 	 * @return
 	 * @throws GitException
 	 */
-	public RevCommit commitAll(String commitHash) throws GitException{
-		addAll();
+	public RevCommit commitAll(String commitHash, boolean update) throws GitException{
+		addAll(update);
         return commit(commitHash);
 	}
 	

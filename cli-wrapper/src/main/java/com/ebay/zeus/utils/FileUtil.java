@@ -408,14 +408,18 @@ public class FileUtil {
 			return null;
 		}
 		
-		String fileName = srcFile.getName();
+		return getTargetFile(srcFile, entry);
+	}
+    
+    public static File getTargetFile(File srcFile, ProjectEntry entry){
+    	String fileName = srcFile.getName();
 		if (fileName.endsWith(".java")){
 			fileName = fileName.substring(0, fileName.length()-5)+".class";
 		}
 		
 		String filePath = entry.getPackagePath(srcFile)+fileName;
 		return new File(entry.getTargetFolder(), filePath);
-	}
+    }
     
     public static ProjectEntry getProjectEntry(File srcFile,
 			List<ProjectEntry> projectEntries) {

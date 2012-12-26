@@ -1,6 +1,8 @@
 package com.ebay.zeus.repository;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,6 +12,7 @@ import java.util.Map;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffEntry.ChangeType;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.util.IO;
 
 import com.ebay.zeus.exceptions.GitException;
 import com.ebay.zeus.exceptions.ProcessException;
@@ -140,13 +143,13 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
     				
     				List<String> binChangedFiles = binRepo.getChangedFiles();
     				
-    				//TODO: only take care UNTRACKED/MODIFIED cases, ignore DELETE or RENAME cases.
     				if (binChangedFiles.size() > 0){
     					binRepo.commitNDPushAll(commit.getName());
     				}else{
     					logger.debug("Haven't found any changed files, needn't commit/push.");
     					notNeedProcessedCommits.add(commit.getName());
     				}
+    				
         		}else{
         			logger.debug("No pom file found in directory"+srcRepo.getDirectory().getParent());
         			notNeedProcessedCommits.add(commit.getName());
@@ -249,13 +252,33 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 	}
 
 	private void processCopiedFiles(Map<String, String> copiedFiles) {
-		// TODO Auto-generated method stub
-		
+		for (Map.Entry<String, String> fileEntry:copiedFiles.entrySet()){
+			File oldFile = getBinaryTargetFile(fileEntry.getKey());
+			if (oldFile!=null && oldFile.exists()){
+				File newFile = getBinaryTargetFile(fileEntry.getValue());
+				
+				byte[] bs;
+				try {
+					bs = IO.readFully(oldFile);
+					FileWriter fw = new FileWriter(newFile,	true);
+					fw.write(new String(bs));
+					fw.close();
+				} catch (Exception e) {
+					logger.error("fail to copy file from "+ oldFile.getAbsolutePath() + " to " + newFile.getAbsolutePath());
+				}
+				
+			}
+		}
 	}
 
 	private void processRenamedFiles(Map<String, String> renamedFiles) {
-		// TODO Auto-generated method stub
-		
+		for (Map.Entry<String, String> fileEntry:renamedFiles.entrySet()){
+			File oldFile = getBinaryTargetFile(fileEntry.getKey());
+			if (oldFile!=null && oldFile.exists()){
+				File newFile = getBinaryTargetFile(fileEntry.getValue());
+				oldFile.renameTo(newFile);
+			}
+		}
 	}
 
 	/**
@@ -274,6 +297,8 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 		
 	}
 
+	private List<ProjectEntry> projectEntries = null;
+	
 	/**
 	 * get binary repo's target file by source repo's deleted file path.
 	 * 
@@ -282,9 +307,11 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 	 */
 	private File getBinaryTargetFile(String filePath) {
 		File srcFile = new File(srcRepoRoot, filePath);
-		List<ProjectEntry> entries = FileUtil.getProjectEntries(srcRepoRoot);
+		if (projectEntries == null){
+			projectEntries = FileUtil.getProjectEntries(srcRepoRoot);
+		}
 		
-		File srcTargetFile = FileUtil.getTargetFile(srcFile, entries);
+		File srcTargetFile = FileUtil.getTargetFile(srcFile, projectEntries);
 		String targetFilePath = getRelativePath(srcTargetFile);
 		return new File(binRepo.getDirectory().getParentFile(), targetFilePath);
 	}

@@ -423,6 +423,9 @@ public class ZeusRepository extends FileRepository{
 		RevCommit prevCommit = null;
 		for (RevCommit commit:allCommits){
 			if (commitHash.equals(commit.getName())){
+				if (prevCommit == null){
+					return null;
+				}
 				return prevCommit.getName();
 			}
 			
@@ -511,18 +514,6 @@ public class ZeusRepository extends FileRepository{
 			List<String> changedFiles = new ArrayList<String>();
 			changedFiles.addAll(status.getModified());
 			changedFiles.addAll(status.getUntracked());
-			
-			return changedFiles; 
-		} catch (Exception e) {
-			throw new GitException("Fail to call 'status' command.", e);
-		}
-	}
-	
-	public List<String> getRemovedFiles() throws GitException{
-		try {
-			Status status = git.status().call();
-			
-			List<String> changedFiles = new ArrayList<String>();
 			changedFiles.addAll(status.getRemoved());
 			
 			return changedFiles; 

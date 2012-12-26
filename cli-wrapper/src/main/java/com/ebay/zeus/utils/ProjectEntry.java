@@ -1,6 +1,7 @@
 package com.ebay.zeus.utils;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.xml.parsers.SAXParserFactory;
@@ -13,7 +14,7 @@ public class ProjectEntry {
 	private File root;
 	private File targetFolder;
 	
-	private List<File> sourceFolders;
+	private List<File> sourceFolders = new ArrayList<File>();
 	
 	public ProjectEntry(File projectRoot){
 		this.root = projectRoot;
@@ -26,18 +27,21 @@ public class ProjectEntry {
 		File dotClasspath = new File(root, ".classpath");
 		if (dotClasspath.exists()){
 			try {
-				sourceFolders = readSourceFoldersFromDotClasspath(dotClasspath);
+				readSourceFoldersFromDotClasspath(dotClasspath);
 				return;
 			} catch (Exception e) {
 				// log it, and ignore it.
-				sourceFolders.clear();
+				if (sourceFolders != null){
+					sourceFolders.clear();
+				}
+				
 			}
 		}
 
 		useDefaultMavenSourcefolders();
 	}
 	
-	private List<File> readSourceFoldersFromDotClasspath(File dotClasspath) throws Exception {
+	private void readSourceFoldersFromDotClasspath(File dotClasspath) throws Exception {
 		SAXParserFactory spf =SAXParserFactory.newInstance();
 	    spf.setNamespaceAware(true);
 	    XMLReader parser = spf.newSAXParser().getXMLReader();
@@ -54,7 +58,6 @@ public class ProjectEntry {
 	        }
 	    });
 	    parser.parse(dotClasspath.toURL().toString());
-		return null;
 	}
 
 	private void useDefaultMavenSourcefolders() {
@@ -100,7 +103,14 @@ public class ProjectEntry {
 			
 			if (filePath.startsWith(srcFolderPath)){
 				String packagePath = filePath.substring(srcFolderPath.length(), filePath.length()-file.getName().length());
-				return packagePath;
+				
+				if (srcFolderPath.contains("src/test/")){
+					packagePath = filePath.substring(srcFolderPath.length(), filePath.length()-file.getName().length());
+					return "test-classes" + packagePath;
+				}else{
+					return "classes" + packagePath;
+				}
+				
 			}
 		}
 		
