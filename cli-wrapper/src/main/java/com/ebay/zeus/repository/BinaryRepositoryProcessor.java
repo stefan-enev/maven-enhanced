@@ -1,10 +1,10 @@
 package com.ebay.zeus.repository;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,13 +52,28 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 					+ "\nBinaryRepository = " + binRepoRoot.getCanonicalPath());
 		
 		notNeedProcessedCommits.clear();
+		//TODO: check which branches are active, only process those active branches.
+		List<String> activeBranches = getActiveBranches();
 		
-		BranchGraph branchGraph = branchGrapthBuilder.build();
-		List<BranchGraphEntry> branchGraphEntries = branchGraph.getSortedBranches();
-		
-		for (BranchGraphEntry branchEntry:branchGraphEntries){
-			processBranch(branchEntry);
+		if (activeBranches.size() == 0){
+			logger.warn("haven't found any active branches, do nothing.");
+			return;
 		}
+			
+		//TODO: if binary branch isn't in active branch list, should retire it.
+		
+		//TODO: for candidate branches, if one branch is new, only process its HEAD commit.
+		//      won't care branch's relations
+		for (String branch:activeBranches){
+			processBranch(branch);
+		}
+		
+//		BranchGraph branchGraph = branchGrapthBuilder.build();
+//		List<BranchGraphEntry> branchGraphEntries = branchGraph.getSortedBranches();
+//		
+//		for (BranchGraphEntry branchEntry:branchGraphEntries){
+//			processBranch(branchEntry);
+//		}
 		
 		binRepo.push(false);
 		
@@ -67,6 +82,26 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 		logger.info("Binary repository updated.");
 	}
 	
+	private final long ONE_MONTH = 1000L * 60 * 60 * 24 * 30;
+	
+	private List<String> getActiveBranches() throws Exception {
+		List<String> activeBranches = new ArrayList<String>();
+		activeBranches.add(Constants.MASTER_BRANCH);
+		List<String> allBranches = srcRepo.getAllBranches();
+		for (String branch:allBranches){
+			srcRepo.checkoutBranch(branch);
+			RevCommit headCommit = srcRepo.getHeadCommit();
+			long commitTime = headCommit.getCommitTime()*1000L;
+			
+			long sinceDate = System.currentTimeMillis() - ONE_MONTH; //ONE MONTH ago
+			if (commitTime > sinceDate){
+				activeBranches.add(branch);
+			}
+		}
+		
+		return activeBranches;
+	}
+
 	/**
 	 * if one commit has been processed, and prove to not need to be processed.
 	 * then ignore this commit. 
@@ -83,15 +118,27 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
      * 
      * @param branch
      */
-	private void processBranch(BranchGraphEntry branchEntry) {
-		logger.info("updating binary repository's branch:"+branchEntry.getBranchName());
+	private void processBranch(String branchName) {
+		logger.info("updating binary repository's branch:"+branchName);
 		
-		String branchName = branchEntry.getBranchName();
+//		String branchName = branchEntry.getBranchName();
 		
 		try {
 			srcRepo.checkoutBranch(branchName);
 			
-			checkoutBinaryBranch(branchEntry);
+			boolean newBinBranch = checkoutBinaryBranch(branchName);
+			
+			if (newBinBranch){
+				RevCommit headCommit = srcRepo.getHeadCommit();
+				if (needProcess(headCommit)){
+	        		processNewBranchCommit(headCommit);
+	        	}else{
+	        		logger.debug("needn't handle this commit:"+headCommit.getName()+"--"+headCommit.getFullMessage());
+	        	}
+				
+				return;
+			}
+			
 	        RevCommit headCommit = binRepo.getHeadCommit();
 	        
 	        List<RevCommit> newCommits = srcRepo.getNewCommits(headCommit);
@@ -118,6 +165,43 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 		}
         
         logger.info("updated binary repository's branch:"+branchName);
+	}
+
+	/**
+	 * process commit for new created binary branch.
+	 * Only take care of head commit.
+	 * 
+	 * @param commit
+	 * @throws GitException
+	 */
+	private void processNewBranchCommit(RevCommit commit) throws GitException {
+		logger.info("creating binary repository with commit:"+commit.getFullMessage());
+		
+		try {
+			srcRepo.reset(commit.getName());
+
+			if (compile()) {
+				copyTargetFolderFromSrcRepoToBinRepo();
+				binRepo.commitNDPushAll(commit.getName());
+
+			} else {
+				logger.debug("No pom file found in directory"
+						+ srcRepo.getDirectory().getParent());
+				notNeedProcessedCommits.add(commit.getName());
+			}
+
+		} catch (Exception e) {
+			// shouldn't break others commits
+			logger.error(e.getMessage(), e);
+			notNeedProcessedCommits.add(commit.getName());
+		} finally {
+			// rollback
+			srcRepo.reset();
+			srcRepo.pull();
+			binRepo.reset();
+		}
+
+		logger.info("created binary repository with commit:" + commit.getFullMessage());
 	}
 
 	/**

@@ -50,20 +50,17 @@ public class SourceRepositoryProcessor extends ZeusRepositoryProcessor{
 		}
 		
 		//checkout binary branch.
-		BranchGraphEntry branchEntry = new BranchGraphEntry();
-		branchEntry.setBranchName(srcRepo.getBranch());
-		
 		if (!binRepo.isBranchExisted(srcRepo.getBranch())){
 			binRepo.checkoutBranch(Constants.MASTER_BRANCH);
 			throw new GitException("binary repository hasn't branch:"+srcRepo.getBranch() +". Exiting Zeus...");
 		}
 		
-		checkoutBinaryBranch(branchEntry);
+		checkoutBinaryBranch(srcRepo.getBranch());
 		
 		//reset binary repo's commit
 		RevCommit headCommit = srcRepo.getHeadCommit();
 		String binaryCommitHash = this.getBinaryStartCommitHash(
-				branchEntry.getBranchName(), headCommit.getName());
+				srcRepo.getBranch(), headCommit.getName());
 		
 		if (binaryCommitHash == null){
 			binRepo.checkoutBranch(Constants.MASTER_BRANCH);

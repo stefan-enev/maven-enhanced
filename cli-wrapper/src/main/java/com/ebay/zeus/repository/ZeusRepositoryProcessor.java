@@ -3,7 +3,6 @@ package com.ebay.zeus.repository;
 import java.io.File;
 import java.io.IOException;
 
-import org.eclipse.jgit.revwalk.RevCommit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,51 +32,35 @@ public abstract class ZeusRepositoryProcessor {
 	 * @param branchName
 	 * @throws GitException
 	 */
-	protected void checkoutBinaryBranch(BranchGraphEntry branchEntry) throws GitException {
-		String branchName = branchEntry.getBranchName();
-		
+	protected boolean checkoutBinaryBranch(String branchName) throws GitException {
 		logger.info("checking out binary repository's branch:"+branchName+"...");
 		
 		branchName = GitUtils.getShortBranchName(branchName);
 		
 		if (branchName.toLowerCase().equals(Constants.MASTER_BRANCH)) {
-			return;
+			return false;
 		}
 		
 		// check whether the branch exists
 		boolean isBranchExisted = binRepo.isBranchExisted(branchName);
 		
 		if( !isBranchExisted ){
-			//checkout 'from' branch and reset to start commit hash first
-			String fromBranchName = branchEntry.getFromBranchName();
-			if (!binRepo.isBranchExisted(fromBranchName)){
-				throw new GitException("Trying to checkout new binary branch:"
-						+ branchName + ", but found its 'from' branch"
-						+ fromBranchName + " doesn't existed.");
-			}
-			
-			fromBranchName = GitUtils.getShortBranchName(fromBranchName);
-			binRepo.checkoutBranch(fromBranchName);
-			
-			RevCommit startCommit = branchEntry.getStartCommit();
-			String binaryStartCommitHash = getBinaryStartCommitHash(
-					fromBranchName, startCommit.getName());
-			
-			if (binaryStartCommitHash != null){
-				binRepo.reset(binaryStartCommitHash);
-			}
-			
 			if (!getCurrentBranch(srcRepo).equals(branchName)){
 				srcRepo.checkoutBranch(branchName);
 			}
 			
+			binRepo.checkoutBranch(Constants.MASTER_BRANCH);
+			
 			//Then checkout new binary branch.
 			binRepo.checkoutNewBranch(branchName);
+			return true;
 		}else{
 			if( !getCurrentBranch(binRepo).equals(branchName) ){
 				binRepo.checkoutBranch(branchName);
 			}
 		}
+		
+		return false;
 	}
 	
 	private String getCurrentBranch(ZeusRepository repo) throws GitException{
