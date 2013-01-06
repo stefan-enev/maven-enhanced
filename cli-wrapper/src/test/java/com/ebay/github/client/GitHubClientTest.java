@@ -37,7 +37,7 @@ public class GitHubClientTest {
     public void existsInGit() throws IOException {
         final String repo = "binrepo-devex";
        //  final String repo = "search_raptor_binary";
-        String githubUrl = "https://github.scm.corp.ebay.com/api/v3/";
+        String githubUrl = "https://github.scm.corp.ebay.com/api/v3";
         String accessToken = "1cf7d9792235b8592eda18bd7dcc2de37f99b3bc";
         // String accessToken = "5d8e186b08062ca405ab25d489fca9823c2a7136";
 
@@ -54,11 +54,9 @@ public class GitHubClientTest {
                 System.out.println(branch);
 
                 GHBranch ghBranch = branches.get(branch);
-
+                GHCommit commit = repository.getCommit(ghBranch.getSHA1());
+                commit.getCommitTime();
                 System.out.println("Repository URL = " + repository.getUrl() + " Branch = " + ghBranch.getName() + " Commit Hash = " + ghBranch.getSHA1());
-
-
-
             }
 
             PagedIterable<GHCommit> commits = repository.listCommits();

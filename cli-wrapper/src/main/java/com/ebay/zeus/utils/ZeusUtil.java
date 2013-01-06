@@ -4,8 +4,11 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.jgit.api.Git;
+import org.kohsuke.github.GHBranch;
+import org.kohsuke.github.GHCommit;
 import org.kohsuke.github.GHOrganization;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
@@ -82,6 +85,42 @@ public class ZeusUtil {
             
             logger.info(repo.getUrl() + " created successfully ");
         }
+	}
+	
+	private static final long ONE_MONTH = 1000L * 60 * 60 * 24 * 30;
+	
+	public static List<String> getActiveBranches(String remoteUrl) throws Exception {
+		List<String> activeBranches = new ArrayList<String>();
+		activeBranches.add(Constants.MASTER_BRANCH);
+		
+		GitHub github = new GitHubClient().getGithub();
+		GHOrganization githubOrg = null;
+		GHRepository repository = null;
+		try{
+			githubOrg = github.getOrganization(GitUtils.getOrgName(remoteUrl));
+			repository = githubOrg.getRepository( GitUtils.getRepositoryName(remoteUrl) );
+		}catch(Exception e){
+			//should try user/repoName
+			repository = github.getRepository(GitUtils.getOrgName(remoteUrl)+"/"+GitUtils.getRepositoryName(remoteUrl));
+		}
+        
+		if (repository == null){
+			throw new GitException("cat's find repository from github server:"+remoteUrl);
+		}
+		
+		Map<String, GHBranch> allBranches = repository.getBranches();
+		for (String branch:allBranches.keySet()){
+			GHBranch ghBranch = allBranches.get(branch);
+			GHCommit commit = repository.getCommit(ghBranch.getSHA1());
+			long commitTime = commit.getCommitTime().getTime();
+			
+			long sinceDate = System.currentTimeMillis() - ONE_MONTH; //ONE MONTH ago
+			if (commitTime > sinceDate){
+				activeBranches.add(branch);
+			}
+		}
+		
+		return activeBranches;
 	}
 	
 	/**

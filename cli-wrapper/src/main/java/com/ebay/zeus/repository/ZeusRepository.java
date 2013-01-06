@@ -313,13 +313,14 @@ public class ZeusRepository extends FileRepository{
 			//need to use short branch name, full branch name not work here.
 			branchName = GitUtils.getShortBranchName(branchName);
 			
-			ref = checkoutCmd.setName(branchName).call();
+			ref = checkoutCmd.setName(branchName).setForce(true).call();
 			logger.info("checkout is complete");
 			if( ref != null ){
 				//System.out.println("ref " + ref.getName() );
 				return checkoutCmd.getResult();
 			}
 		} catch (Exception e) {
+			logger.error("fail to checkout local branch, try to checkout remote branch.", e);
 			return checkoutRemoteBranch(branchName);
 //			throw new GitException("unable to checkout branch " + branchName, e);
 		}

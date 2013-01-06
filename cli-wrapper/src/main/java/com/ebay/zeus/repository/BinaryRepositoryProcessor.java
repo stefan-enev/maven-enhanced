@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,14 +28,14 @@ import com.ebay.zeus.utils.ZeusUtil;
  *
  */
 public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
-	private BranchGraphBuilder branchGrapthBuilder;
+//	private BranchGraphBuilder branchGrapthBuilder;
 	
 	private List<String> notNeedProcessedCommits = new ArrayList<String>();
 	
 	public BinaryRepositoryProcessor(SourceZeusRepository srcRepo, BinaryZeusRepository binRepo){
 		super(srcRepo, binRepo);
 		
-		this.branchGrapthBuilder = new BranchGraphBuilder(srcRepo);
+//		this.branchGrapthBuilder = new BranchGraphBuilder(srcRepo);
 	}
 	
 	/**
@@ -52,8 +51,8 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 					+ "\nBinaryRepository = " + binRepoRoot.getCanonicalPath());
 		
 		notNeedProcessedCommits.clear();
-		//TODO: check which branches are active, only process those active branches.
-		List<String> activeBranches = getActiveBranches();
+
+		List<String> activeBranches = ZeusUtil.getActiveBranches(srcRepo.getRemoteUrl());
 		
 		if (activeBranches.size() == 0){
 			logger.warn("haven't found any active branches, do nothing.");
@@ -80,26 +79,6 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 		logger.debug("commit/pushed changes onto remote binary repo:"
 				+ binRepo.getRemoteUrl());
 		logger.info("Binary repository updated.");
-	}
-	
-	private final long ONE_MONTH = 1000L * 60 * 60 * 24 * 30;
-	
-	private List<String> getActiveBranches() throws Exception {
-		List<String> activeBranches = new ArrayList<String>();
-		activeBranches.add(Constants.MASTER_BRANCH);
-		List<String> allBranches = srcRepo.getAllBranches();
-		for (String branch:allBranches){
-			srcRepo.checkoutBranch(branch);
-			RevCommit headCommit = srcRepo.getHeadCommit();
-			long commitTime = headCommit.getCommitTime()*1000L;
-			
-			long sinceDate = System.currentTimeMillis() - ONE_MONTH; //ONE MONTH ago
-			if (commitTime > sinceDate){
-				activeBranches.add(branch);
-			}
-		}
-		
-		return activeBranches;
 	}
 
 	/**
