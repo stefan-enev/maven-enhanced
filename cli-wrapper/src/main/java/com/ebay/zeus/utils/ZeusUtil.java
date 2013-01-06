@@ -115,7 +115,7 @@ public class ZeusUtil {
 			long commitTime = commit.getCommitTime().getTime();
 			
 			long sinceDate = System.currentTimeMillis() - ONE_MONTH; //ONE MONTH ago
-			if (commitTime > sinceDate){
+			if (commitTime > sinceDate && !activeBranches.contains(branch)){
 				activeBranches.add(branch);
 			}
 		}
