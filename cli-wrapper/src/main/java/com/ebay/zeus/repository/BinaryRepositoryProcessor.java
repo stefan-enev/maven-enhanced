@@ -67,15 +67,8 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 			processBranch(branch);
 		}
 		
-//		BranchGraph branchGraph = branchGrapthBuilder.build();
-//		List<BranchGraphEntry> branchGraphEntries = branchGraph.getSortedBranches();
-//		
-//		for (BranchGraphEntry branchEntry:branchGraphEntries){
-//			processBranch(branchEntry);
-//		}
-		
 		binRepo.push(false);
-		
+		srcRepo.checkoutBranch(Constants.MASTER_BRANCH);
 		logger.debug("commit/pushed changes onto remote binary repo:"
 				+ binRepo.getRemoteUrl());
 		logger.info("Binary repository updated.");
