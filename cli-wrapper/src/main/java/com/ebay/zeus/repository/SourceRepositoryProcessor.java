@@ -41,12 +41,15 @@ public class SourceRepositoryProcessor extends ZeusRepositoryProcessor{
 		
 		if (ZeusUtil.isLocalBinaryRepositoryExisted(srcRepoRoot)) {
 			File binaryRepoRoot= ZeusUtil.getExistedBinaryRepositoryRoot(srcRepoRoot);
-			File binGit = new File(binaryRepoRoot, Constants.DOT_GIT);
-			binRepo = new BinaryZeusRepository(binGit);
+			File binGit = new File(binaryRepoRoot, Constants.DOT_GIT);		binRepo = new BinaryZeusRepository(binGit);
 			binRepo.pull();
-
 		}else{
-			this.binRepo = ZeusUtil.cloneBinaryRepository(true, srcRepo);
+			boolean existed = ZeusUtil.isExistedBranch(srcRepo.getRemoteUrl(), srcRepo.getBranch());
+			
+			if (existed){
+				this.binRepo = ZeusUtil.cloneBinaryRepository(true, srcRepo);
+			}
+			
 		}
 		
 		//checkout binary branch.
@@ -55,7 +58,7 @@ public class SourceRepositoryProcessor extends ZeusRepositoryProcessor{
 			throw new GitException("binary repository hasn't branch:"+srcRepo.getBranch() +". Exiting Zeus...");
 		}
 		
-		checkoutBinaryBranch(srcRepo.getBranch());
+//		checkoutBinaryBranch(srcRepo.getBranch());
 		
 		//reset binary repo's commit
 		RevCommit headCommit = srcRepo.getHeadCommit();

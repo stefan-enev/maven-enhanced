@@ -93,16 +93,7 @@ public class ZeusUtil {
 		List<String> activeBranches = new ArrayList<String>();
 		activeBranches.add(Constants.MASTER_BRANCH);
 		
-		GitHub github = new GitHubClient().getGithub();
-		GHOrganization githubOrg = null;
-		GHRepository repository = null;
-		try{
-			githubOrg = github.getOrganization(GitUtils.getOrgName(remoteUrl));
-			repository = githubOrg.getRepository( GitUtils.getRepositoryName(remoteUrl) );
-		}catch(Exception e){
-			//should try user/repoName
-			repository = github.getRepository(GitUtils.getOrgName(remoteUrl)+"/"+GitUtils.getRepositoryName(remoteUrl));
-		}
+		GHRepository repository = getGHRepository(remoteUrl);
         
 		if (repository == null){
 			throw new GitException("cat's find repository from github server:"+remoteUrl);
@@ -122,6 +113,42 @@ public class ZeusUtil {
 		
 		return activeBranches;
 	}
+
+	public static GHRepository getGHRepository(String remoteUrl)
+			throws IOException, GitException {
+		GitHub github = new GitHubClient().getGithub();
+		GHOrganization githubOrg = null;
+		GHRepository repository = null;
+		try{
+			githubOrg = github.getOrganization(GitUtils.getOrgName(remoteUrl));
+			repository = githubOrg.getRepository( GitUtils.getRepositoryName(remoteUrl) );
+		}catch(Exception e){
+			//should try user/repoName
+			repository = github.getRepository(GitUtils.getOrgName(remoteUrl)+"/"+GitUtils.getRepositoryName(remoteUrl));
+		}
+		
+		if (repository == null){
+			throw new GitException("cat's find repository from github server:"+remoteUrl);
+		}
+		
+		return repository;
+	}
+	
+	public static boolean isExistedBranch(String remoteUrl, String branch) throws Exception{
+		GHRepository repository = getGHRepository(remoteUrl);
+        
+		try{
+			GHBranch ghBranch = repository.getBranch(branch);
+			if (ghBranch == null){
+				logger.warn("Haven't find any branch in github server:"+branch);
+				return false;
+			}
+		}catch(Exception e){
+			logger.error("Encunter exception when trying to get branch:"+branch, e);
+			return false;
+		}
+		return true;
+	}
 	
 	/**
 	 * if local binary repository not existed, clone binary repository from remote.
@@ -129,7 +156,7 @@ public class ZeusUtil {
 	 * @param readonly
 	 * @throws GitException
 	 */
-	public static BinaryZeusRepository cloneBinaryRepository( boolean readonly, SourceZeusRepository sourceRepository ) throws GitException {
+	public static BinaryZeusRepository cloneBinaryRepository( boolean readonly, SourceZeusRepository sourceRepository) throws Exception {
 		logger.info("cloning binary repository....");
 		
 		// find the name of the "source repository"
