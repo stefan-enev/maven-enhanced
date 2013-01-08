@@ -17,7 +17,6 @@
 package com.ebay.zeus;
 
 import java.io.File;
-import java.util.Calendar;
 
 import org.apache.commons.cli.ParseException;
 import org.slf4j.Logger;
@@ -26,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import com.ebay.zeus.cli.CliArgsParser;
 import com.ebay.zeus.cli.InputParams;
 import com.ebay.zeus.cli.RunMode;
+import com.ebay.zeus.utils.TimeTracker;
 import com.ebay.zeus.utils.ZeusUtil;
 
 /**
@@ -52,18 +52,17 @@ public class ZeusCli {
 	public static final Logger logger = LoggerFactory.getLogger(ZeusCli.class);
 	
 	public static void main( String[] args ) throws ParseException{
-		
-		long begin = Calendar.getInstance().getTimeInMillis();
+		TimeTracker tracker = new TimeTracker();
+		tracker.start();
 		
 		ZeusCli cli = new ZeusCli();
 		InputParams input = cli.processCliArguments(args);
 		
 		cli.process(input);
 		
-		long end = Calendar.getInstance().getTimeInMillis();
-		long diff = end - begin;
+		tracker.stop();
 		
-		logger.info("Time taken " + diff + " ms");
+		logger.info("Time taken " + tracker.getDurationString() + " ms");
 	}
 	
 	public InputParams processCliArguments( String[] args ) throws ParseException{

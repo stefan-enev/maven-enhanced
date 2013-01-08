@@ -134,6 +134,23 @@ public class ZeusUtil {
 		return repository;
 	}
 	
+	public static boolean isExistedBranchCommit(String remoteUrl, String branch, String commitSHA1) throws Exception{
+		logger.debug("checking whether specified branch & commit existed in binary repository...");
+		TimeTracker tracker = new TimeTracker();
+		
+		tracker.start();
+		if (!isExistedBranch(remoteUrl, branch)){
+			return false;
+		}
+		
+		boolean ret = isExistedCommit(remoteUrl, commitSHA1);
+		
+		tracker.stop();
+		logger.debug("Checking takes "+ tracker.getDurationString());
+		
+		return ret;
+	}
+	
 	public static boolean isExistedBranch(String remoteUrl, String branch) throws Exception{
 		GHRepository repository = getGHRepository(remoteUrl);
         
@@ -150,6 +167,31 @@ public class ZeusUtil {
 		return true;
 	}
 	
+	public static boolean isExistedCommit(String remoteUrl, String commitSHA1) throws Exception{
+		GHRepository repository = getGHRepository(remoteUrl);
+        
+		try{
+			List<GHCommit> ghCommits = repository.getCommits();
+			if (ghCommits != null && ghCommits.size() == 0){
+				logger.warn("Haven't find any commit in binary repository.");
+				return false;
+			}
+			
+			for (GHCommit ghCommit:ghCommits){
+				if (commitSHA1.equals(ghCommit.getCommitMessage())){
+					return true;
+				}
+			}
+			
+		}catch(Exception e){
+			logger.error("Encunter exception when trying to get specific commit:"+commitSHA1, e);
+			return false;
+		}
+		
+		logger.warn("Haven't find specified commit in binary repository.");
+		return false;
+	}
+	
 	/**
 	 * if local binary repository not existed, clone binary repository from remote.
 	 * 
@@ -160,6 +202,27 @@ public class ZeusUtil {
 		logger.info("cloning binary repository....");
 		
 		// find the name of the "source repository"
+		String giturl = getBinaryRemoteUrl(readonly, sourceRepository);
+
+		// calculate binary repository folder
+		File binaryRepoFolder = ZeusUtil.getBinaryRepositoryRoot(sourceRepository.getDirectory().getParentFile());
+
+		logger.debug("gitUrl:"+giturl+"\n"+"binary repo root:"+binaryRepoFolder.getAbsolutePath());
+		
+		// clone the binary repository
+		Git binGit = GitUtils.cloneRepository(giturl, binaryRepoFolder, sourceRepository.getBranch());
+		
+		logger.info("binary repository cloned");
+		
+		try {
+			return new BinaryZeusRepository(binGit.getRepository().getDirectory());
+		} catch (IOException e) {
+			throw new GitException("Fail to initialize BinaryZeusRepository.", e);
+		}
+		
+    }
+
+	public static String getBinaryRemoteUrl(boolean readonly, SourceZeusRepository sourceRepository) {
 		String srcRepoUrl = sourceRepository.getRemoteUrl();;
 		String org = GitUtils.getOrgName(srcRepoUrl);
 		String repoName = GitUtils.getRepositoryName(srcRepoUrl);
@@ -172,24 +235,8 @@ public class ZeusUtil {
 		}else{
 			giturl = Constants.GITURL_BINARY_SSH_PREFIX + binaryRepoName + Constants.DOT_GIT;
 		}
-
-		// calculate binary repository folder
-		File binaryRepoFolder = ZeusUtil.getBinaryRepositoryRoot(sourceRepository.getDirectory().getParentFile());
-
-		logger.debug("gitUrl:"+giturl+"\n"+"binary repo root:"+binaryRepoFolder.getAbsolutePath());
-		
-		// clone the binary repository
-		Git binGit = GitUtils.cloneRepository(giturl, binaryRepoFolder);
-		
-		logger.info("binary repository cloned");
-		
-		try {
-			return new BinaryZeusRepository(binGit.getRepository().getDirectory());
-		} catch (IOException e) {
-			throw new GitException("Fail to initialize BinaryZeusRepository.", e);
-		}
-		
-    }
+		return giturl;
+	}
 	
 	/**
 	 * check whether local & remote repository existed or not.

@@ -8,6 +8,7 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import com.ebay.zeus.exceptions.GitException;
 import com.ebay.zeus.utils.Constants;
 import com.ebay.zeus.utils.FileUtil;
+import com.ebay.zeus.utils.TimeTracker;
 import com.ebay.zeus.utils.ZeusUtil;
 
 /**
@@ -29,6 +30,9 @@ public class SourceRepositoryProcessor extends ZeusRepositoryProcessor{
 	 * @throws Exception
 	 */
 	public void process() throws Exception{
+		TimeTracker tracker = new TimeTracker();
+		tracker.start();
+		
 		// TODO: download dependencies
 		
 		// read the source project
@@ -41,15 +45,20 @@ public class SourceRepositoryProcessor extends ZeusRepositoryProcessor{
 		
 		if (ZeusUtil.isLocalBinaryRepositoryExisted(srcRepoRoot)) {
 			File binaryRepoRoot= ZeusUtil.getExistedBinaryRepositoryRoot(srcRepoRoot);
-			File binGit = new File(binaryRepoRoot, Constants.DOT_GIT);		binRepo = new BinaryZeusRepository(binGit);
+			File binGit = new File(binaryRepoRoot, Constants.DOT_GIT);		
+			binRepo = new BinaryZeusRepository(binGit);
 			binRepo.pull();
 		}else{
-			boolean existed = ZeusUtil.isExistedBranch(srcRepo.getRemoteUrl(), srcRepo.getBranch());
+			RevCommit headCommit = srcRepo.getHeadCommit();
+			String binRepoRemoteUrl = ZeusUtil.getBinaryRemoteUrl(true, srcRepo);
+			boolean existed = ZeusUtil.isExistedBranchCommit(binRepoRemoteUrl,
+					srcRepo.getBranch(), headCommit.getName());
 			
-			if (existed){
-				this.binRepo = ZeusUtil.cloneBinaryRepository(true, srcRepo);
+			if (!existed){
+				return;
 			}
 			
+			this.binRepo = ZeusUtil.cloneBinaryRepository(true, srcRepo);
 		}
 		
 		//checkout binary branch.
@@ -57,8 +66,6 @@ public class SourceRepositoryProcessor extends ZeusRepositoryProcessor{
 			binRepo.checkoutBranch(Constants.MASTER_BRANCH);
 			throw new GitException("binary repository hasn't branch:"+srcRepo.getBranch() +". Exiting Zeus...");
 		}
-		
-//		checkoutBinaryBranch(srcRepo.getBranch());
 		
 		//reset binary repo's commit
 		RevCommit headCommit = srcRepo.getHeadCommit();
@@ -75,7 +82,8 @@ public class SourceRepositoryProcessor extends ZeusRepositoryProcessor{
 		//copy classes from binary repo to source repo.
 		copyClassesFromBinaryRepoToSourceRepo();
 		
-		logger.info("setup is complete");
+		tracker.stop();
+		logger.info("setup is completed, takes " + tracker.getDurationString());
 	}
 	
 	private void copyClassesFromBinaryRepoToSourceRepo() throws GitException{

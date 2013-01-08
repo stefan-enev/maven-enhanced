@@ -1,6 +1,7 @@
 package com.ebay.zeus.utils;
 
 import java.io.File;
+import java.util.Arrays;
 
 import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.Git;
@@ -46,13 +47,23 @@ public class GitUtils {
 	 * @return
 	 * @throws GitException
 	 */
-	public static Git cloneRepository(String giturl, File repoDirectory)
+	public static Git cloneRepository(String giturl, File repoDirectory, String branch)
 			throws GitException {
 		CloneCommand cloneCmd = Git.cloneRepository();
 		cloneCmd.setURI(giturl);
 		cloneCmd.setDirectory(repoDirectory);
-		cloneCmd.setCloneAllBranches(true);
-
+		cloneCmd.setCloneAllBranches(false);
+		cloneCmd.setCloneSubmodules(false);
+		cloneCmd.setRemote("origin");
+		cloneCmd.setTimeout(30);
+		
+		String branchToClone = branch;
+		if (!branchToClone.startsWith("refs/heads/")){
+			branchToClone = "refs/heads/" + branch;
+		}
+		
+		cloneCmd.setBranch(branchToClone);
+		cloneCmd.setBranchesToClone(Arrays.asList(branchToClone));
 		try {
 			logger.debug("cloning repository " + giturl);
 			return cloneCmd.call();
