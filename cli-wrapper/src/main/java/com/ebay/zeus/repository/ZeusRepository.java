@@ -331,7 +331,8 @@ public class ZeusRepository extends FileRepository{
 	
 	public void clean(){
 		CleanCommand cleanCmd = git.clean();
-		cleanCmd.setDryRun(true);
+		cleanCmd.setDryRun(false);
+		
 		try {
 			cleanCmd.call();
 		} catch (Exception e) {
