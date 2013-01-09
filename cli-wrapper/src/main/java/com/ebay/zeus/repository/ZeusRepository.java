@@ -11,6 +11,7 @@ import java.util.SortedMap;
 
 import org.eclipse.jgit.api.CheckoutCommand;
 import org.eclipse.jgit.api.CheckoutResult;
+import org.eclipse.jgit.api.CleanCommand;
 import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.LogCommand;
@@ -326,6 +327,16 @@ public class ZeusRepository extends FileRepository{
 		}
 		
 		return null;
+	}
+	
+	public void clean(){
+		CleanCommand cleanCmd = git.clean();
+		cleanCmd.setDryRun(true);
+		try {
+			cleanCmd.call();
+		} catch (Exception e) {
+			logger.debug("Encounter exception when clean repository.", e);
+		}
 	}
 	
 	/**

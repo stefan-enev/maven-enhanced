@@ -28,14 +28,11 @@ import com.ebay.zeus.utils.ZeusUtil;
  *
  */
 public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
-//	private BranchGraphBuilder branchGrapthBuilder;
 	
 	private List<String> notNeedProcessedCommits = new ArrayList<String>();
 	
 	public BinaryRepositoryProcessor(SourceZeusRepository srcRepo, BinaryZeusRepository binRepo){
 		super(srcRepo, binRepo);
-		
-//		this.branchGrapthBuilder = new BranchGraphBuilder(srcRepo);
 	}
 	
 	/**
@@ -52,13 +49,18 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 		
 		notNeedProcessedCommits.clear();
 
-		List<String> activeBranches = ZeusUtil.getActiveBranches(srcRepo.getRemoteUrl());
+		List<String> activeBranches = ZeusUtil.getActiveBranches(srcRepo.getRemoteUrl(), binRepoRoot);
+		
+		if (isBlackListChanged()){
+			binRepo.commitNDPushAll("commit blacklist");
+		}
 		
 		if (activeBranches.size() == 0){
 			logger.warn("haven't found any active branches, do nothing.");
 			return;
 		}
-			
+		
+		
 		//TODO: if binary branch isn't in active branch list, should retire it.
 		
 		//TODO: for candidate branches, if one branch is new, only process its HEAD commit.
@@ -72,6 +74,17 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 		logger.debug("commit/pushed changes onto remote binary repo:"
 				+ binRepo.getRemoteUrl());
 		logger.info("Binary repository updated.");
+	}
+
+	public boolean isBlackListChanged() throws GitException {
+		List<String> changedFiles = binRepo.getChangedFiles();
+		for (String file:changedFiles){
+			if (file.contains(".blacklist")){
+				return true;
+			}
+		}
+		
+		return false;
 	}
 
 	/**
@@ -93,10 +106,9 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 	private void processBranch(String branchName) {
 		logger.info("updating binary repository's branch:"+branchName);
 		
-//		String branchName = branchEntry.getBranchName();
-		
 		try {
 			srcRepo.checkoutBranch(branchName);
+			srcRepo.clean();
 			
 			boolean newBinBranch = checkoutBinaryBranch(branchName);
 			

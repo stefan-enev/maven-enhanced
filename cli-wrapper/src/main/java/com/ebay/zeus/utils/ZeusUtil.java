@@ -1,8 +1,13 @@
 package com.ebay.zeus.utils;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -88,8 +93,23 @@ public class ZeusUtil {
 	}
 	
 	private static final long ONE_MONTH = 1000L * 60 * 60 * 24 * 30;
+	private static final long THREE_MONTH = 1000L * 60 * 60 * 24 * 30 * 3;
 	
-	public static List<String> getActiveBranches(String remoteUrl) throws Exception {
+	public static List<String> getActiveBranches(String remoteUrl, File BinaryRepoRoot) throws Exception {
+		logger.info("getting active branch list...");
+		
+		//read black list first.
+		File blackListFile = new File(BinaryRepoRoot, ".blacklist");
+		List<String> blackList = new ArrayList<String>();
+		if (blackListFile.exists()){
+			//read it
+			blackList = readBlackList(blackListFile);
+		}else{
+			blackListFile.createNewFile();
+		}
+		
+		List<String> changedBlackList = new ArrayList<String>();
+		
 		List<String> activeBranches = new ArrayList<String>();
 		activeBranches.add(Constants.MASTER_BRANCH);
 		
@@ -101,6 +121,10 @@ public class ZeusUtil {
 		
 		Map<String, GHBranch> allBranches = repository.getBranches();
 		for (String branch:allBranches.keySet()){
+			if (blackList.contains(branch)){
+				continue;
+			}
+			
 			GHBranch ghBranch = allBranches.get(branch);
 			GHCommit commit = repository.getCommit(ghBranch.getSHA1());
 			long commitTime = commit.getCommitTime().getTime();
@@ -108,10 +132,59 @@ public class ZeusUtil {
 			long sinceDate = System.currentTimeMillis() - ONE_MONTH; //ONE MONTH ago
 			if (commitTime > sinceDate && !activeBranches.contains(branch)){
 				activeBranches.add(branch);
+				logger.debug("active branch:"+branch);
 			}
+			
+			long deadDate = System.currentTimeMillis() - THREE_MONTH;
+			if (commitTime < deadDate){
+				changedBlackList.add(branch);
+				logger.debug("add branch: "+branch+" into black list.");
+			}
+			
+		}
+		
+		if (changedBlackList.size() > 0){
+			flushBlackList(changedBlackList, blackListFile);
 		}
 		
 		return activeBranches;
+	}
+
+	private static void flushBlackList(List<String> blackList, File blackListFile) {
+		try {
+			BufferedWriter out = new BufferedWriter(new FileWriter(blackListFile));
+
+            for (String line:blackList){
+            	out.write(line);
+            	out.newLine();
+            }
+
+            out.close();
+        }catch(IOException e){
+            logger.debug("Encounter exception when write black list.", e);
+
+        }
+	}
+
+	private static List<String> readBlackList(File blackListFile) {
+		List<String> list = new ArrayList<String>();
+		
+		BufferedReader in;
+		try {
+			in = new BufferedReader(new FileReader(blackListFile));
+			String line;
+			while ((line = in.readLine()) != null){
+				list.add(line);
+			}
+			
+			in.close();
+			
+			return list;
+		} catch (Exception e) {
+			logger.debug("Encunter exception when read black list.", e);
+		}
+		
+		return Collections.emptyList();
 	}
 
 	public static GHRepository getGHRepository(String remoteUrl)
