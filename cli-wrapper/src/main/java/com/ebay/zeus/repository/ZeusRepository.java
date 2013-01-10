@@ -321,7 +321,7 @@ public class ZeusRepository extends FileRepository{
 				return checkoutCmd.getResult();
 			}
 		} catch (Exception e) {
-			logger.error("fail to checkout local branch, try to checkout remote branch.", e);
+			logger.warn("fail to checkout local branch, try to checkout remote branch.");
 			return checkoutRemoteBranch(branchName);
 //			throw new GitException("unable to checkout branch " + branchName, e);
 		}
