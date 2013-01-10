@@ -14,6 +14,8 @@ public class Constants {
     public final static String ORIGIN_BRANCHNAME_PREFIX = "origin/";
     
     public final static String FIRST_COMMIT_MESSAGE = "first-commit";
+    public final static String BLACKLIST_COMMIT_MESSAGE = "commit blacklist";
+    
     public final static int COMMIT_MAX_NUMBER = 10;
     
 }

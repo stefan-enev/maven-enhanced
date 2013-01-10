@@ -46,7 +46,9 @@ public abstract class ZeusRepositoryProcessor {
 		if (isBranchExisted && branchName.toLowerCase().equals(Constants.MASTER_BRANCH)){
 			binRepo.checkoutBranch(branchName);
 			boolean firstCommit = binRepo.getHeadCommit().getFullMessage().equals(Constants.FIRST_COMMIT_MESSAGE);
-			if (firstCommit){
+			boolean blacklistCommit = binRepo.getHeadCommit().getFullMessage().equals(Constants.BLACKLIST_COMMIT_MESSAGE);
+			
+			if (firstCommit || blacklistCommit){
 				return true;
 			}
 		}

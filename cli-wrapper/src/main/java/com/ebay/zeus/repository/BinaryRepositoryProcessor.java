@@ -413,7 +413,7 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 	private boolean compile() throws ProcessException {
 		File pomFile = new File(srcRepoRoot, "pom.xml");
 		if (pomFile.exists()){
-			MavenUtil.executeMvnCommand("compile", srcRepoRoot, System.out);
+			MavenUtil.executeMvnCommand("clean compile", srcRepoRoot, System.out);
 			
 			return true;
 		}
