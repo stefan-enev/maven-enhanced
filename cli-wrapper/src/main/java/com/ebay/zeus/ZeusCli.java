@@ -58,7 +58,9 @@ public class ZeusCli {
 		ZeusCli cli = new ZeusCli();
 		InputParams input = cli.processCliArguments(args);
 		
-		cli.process(input);
+		if( !input.getMode().equals(RunMode.USAGE ) ){
+			cli.process(input);
+		}
 		
 		tracker.stop();
 		
@@ -76,7 +78,7 @@ public class ZeusCli {
 			parser.printUsage();
 		}
 		
-		logger.info("input params: mode - "+input.getMode()+ "; map service url - "+ input.getMapSvcUrl());
+		logger.info("input params: mode - "+input.getMode());
 		
 		return input;
 	}
@@ -102,9 +104,12 @@ public class ZeusCli {
 			if (input.getMode().equals(RunMode.SETUP)) {
 				zmanager.setupProject();
 			}
+			
 		} catch (Exception e) {
 			logger.error(e.getMessage(), e);
 			return;
 		}
 	}
+	
+
 }
