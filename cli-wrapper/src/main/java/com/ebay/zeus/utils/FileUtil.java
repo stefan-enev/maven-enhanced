@@ -180,30 +180,6 @@ public class FileUtil {
 		}
 	}
     
-    public static void copyChangedBinaryFolders(List<File> changedTargetFolders, List<String> exclusionList, File source, File destination) throws IOException {
-
-		FilenameFilter filter = new FilenameFilter() {
-			public boolean accept(File dir, String name) {
-				return true;
-			}
-		};
-
-      int pathlength = source.getCanonicalPath().length();
-      for (File f : changedTargetFolders) {
-          // construct the directory to copied
-			if (f.getCanonicalPath().startsWith(source.getCanonicalPath())) {
-              // get the path that is additional
-				String pathfraction  = f.getCanonicalPath().substring(pathlength);
-              File d = new File(destination, pathfraction );
-              if (d.isDirectory()){
-              	FileUtils.deleteDirectory(d);
-              }
-              System.out.println( "copying " + f.getCanonicalPath() + " to " + d.getAbsolutePath() );
-				FileUtil.doCopyDirectory(f, d, filter, true, exclusionList);
-			}
-		}
-	}
-    
 	public static class FileFilter implements IOFileFilter{
 		public boolean accept(File file) {
 			return false;
