@@ -37,18 +37,14 @@ public abstract class ZeusRepositoryProcessor {
 		
 		branchName = GitUtils.getShortBranchName(branchName);
 		
-//		if (branchName.toLowerCase().equals(Constants.MASTER_BRANCH)) {
-//			return false;
-//		}
-		
 		// check whether the branch exists
 		boolean isBranchExisted = binRepo.isBranchExisted(branchName);
 		if (isBranchExisted && branchName.toLowerCase().equals(Constants.MASTER_BRANCH)){
 			binRepo.checkoutBranch(branchName);
 			boolean firstCommit = binRepo.getHeadCommit().getFullMessage().equals(Constants.FIRST_COMMIT_MESSAGE);
 			boolean blacklistCommit = binRepo.getHeadCommit().getFullMessage().equals(Constants.BLACKLIST_COMMIT_MESSAGE);
-			
-			if (firstCommit || blacklistCommit){
+			int commitSize = binRepo.getAllCommits().size();
+			if ((firstCommit || blacklistCommit) && commitSize <= 2 ){
 				return true;
 			}
 		}
@@ -87,18 +83,7 @@ public abstract class ZeusRepositoryProcessor {
 			return null;
 		}
 		
-		String binaryStartCommitHash = binRepo.getBinaryCommit(startCommitHash);
-//		if (binaryStartCommitHash == null){
-//			//find previous commit for start commit.
-//			srcRepo.checkoutBranch(fromBranchName);
-////			srcRepo.reset(startCommitHash);
-//			
-//			String prevCommit = srcRepo.getPreviousCommit(startCommitHash);
-//			
-//			return getBinaryStartCommitHash(fromBranchName, prevCommit);
-//		}
-		
-		return binaryStartCommitHash;
+		return binRepo.getBinaryCommit(startCommitHash);
 	}
 	
 	abstract public void process() throws Exception;
