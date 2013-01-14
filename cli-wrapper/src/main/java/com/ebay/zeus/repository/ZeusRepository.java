@@ -354,6 +354,7 @@ public class ZeusRepository extends FileRepository{
 		checkoutCmd.setName( branchName);
 		checkoutCmd.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK );
 		checkoutCmd.setStartPoint( "origin/" + branchName );
+		checkoutCmd.setForce(true);
 
 		System.out.println("checking out branch " + branchName );
 		
