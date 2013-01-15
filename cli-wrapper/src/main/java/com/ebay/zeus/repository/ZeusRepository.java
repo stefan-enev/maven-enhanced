@@ -155,10 +155,12 @@ public class ZeusRepository extends FileRepository{
 	 * @return
 	 * @throws GitException
 	 */
-	public RevCommit getHeadCommit() throws GitException{
+	public RevCommit getHeadCommit(String branch) throws GitException{
 		try {
-			return this.getAllCommits().get(this.getAllCommits().size()-1);
-		} catch (GitException e) {
+			ObjectId headId = this.resolve("origin/"+branch);
+			RevWalk rw = new RevWalk(this);
+			return rw.parseCommit(headId);
+		} catch (Exception e) {
 			throw new GitException("fail to get commit history for repository" + this.getDirectory().getParent(), e);
 		}
 	}
@@ -219,8 +221,6 @@ public class ZeusRepository extends FileRepository{
 	/**
 	 * get changed files for one specified commit.
 	 * if changed files not existed, won't return it.
-	 * 
-	 * TODO: haven't handle "DELETE" case, need to remove binary's classes accordingly...
 	 * 
 	 * @param commit
 	 * @return
@@ -329,6 +329,29 @@ public class ZeusRepository extends FileRepository{
 		return null;
 	}
 	
+	/**
+	 * checkout specified commit.
+	 * 
+	 * @param branchName
+	 * @return
+	 * @throws GitException
+	 */
+	public CheckoutResult checkout(String startPoint) throws GitException{
+		CheckoutCommand checkoutCmd = git.checkout();
+		Ref ref;
+		try {
+			ref = checkoutCmd.setName(startPoint).setForce(true).call();
+			logger.info("checkout is complete");
+			if( ref != null ){
+				return checkoutCmd.getResult();
+			}
+		} catch (Exception e) {
+			logger.error("fail to checkout specified commit:"+startPoint);
+		}
+		
+		return null;
+	}
+	
 	public void clean(){
 		CleanCommand cleanCmd = git.clean();
 		cleanCmd.setDryRun(false);
@@ -405,12 +428,15 @@ public class ZeusRepository extends FileRepository{
 	 * @return commit list
 	 * @throws GitException
 	 */
-	public List<RevCommit> getAllCommits() throws GitException{
+	public List<RevCommit> getAllCommits(String branch) throws GitException{
 		LogCommand logCmd = git.log();
-    	
+		
     	try {
-    		List<RevCommit> commitList = new ArrayList<RevCommit>();
     		
+    		ObjectId headId = this.resolve("origin/"+branch);
+    		logCmd.add(headId);
+    		List<RevCommit> commitList = new ArrayList<RevCommit>();
+//    		logCmd.addRange(null, headId);
     		Iterable<RevCommit> commits = logCmd.call();
     		Iterator<RevCommit> iterator = commits.iterator();
     		while(iterator.hasNext()){
@@ -425,29 +451,29 @@ public class ZeusRepository extends FileRepository{
 		}
 	}
 	
-	/**
-	 * get previous (older) commit hash for specified commit hash.
-	 * 
-	 * @param commitHash
-	 * @return previous commit hash
-	 * @throws GitException 
-	 */
-	public String getPreviousCommit(String commitHash) throws GitException{
-		List<RevCommit> allCommits = getAllCommits();
-		RevCommit prevCommit = null;
-		for (RevCommit commit:allCommits){
-			if (commitHash.equals(commit.getName())){
-				if (prevCommit == null){
-					return null;
-				}
-				return prevCommit.getName();
-			}
-			
-			prevCommit = commit;
-		}
-		
-		return null;
-	}
+//	/**
+//	 * get previous (older) commit hash for specified commit hash.
+//	 * 
+//	 * @param commitHash
+//	 * @return previous commit hash
+//	 * @throws GitException 
+//	 */
+//	public String getPreviousCommit(String commitHash) throws GitException{
+//		List<RevCommit> allCommits = getAllCommits();
+//		RevCommit prevCommit = null;
+//		for (RevCommit commit:allCommits){
+//			if (commitHash.equals(commit.getName())){
+//				if (prevCommit == null){
+//					return null;
+//				}
+//				return prevCommit.getName();
+//			}
+//			
+//			prevCommit = commit;
+//		}
+//		
+//		return null;
+//	}
 	
 	/**
 	 * add remote url into git config.
@@ -494,12 +520,12 @@ public class ZeusRepository extends FileRepository{
 	 * @return
 	 * @throws GitException
 	 */
-	public boolean hasCommit(String commitHash) throws GitException{
+	public boolean hasCommit(String branch, String commitHash) throws GitException{
 		if (commitHash == null || "".equals(commitHash)){
 			throw new GitException("commit SHA shouldn't be empty.");
 		}
 		
-		List<RevCommit> allCommits = getAllCommits();
+		List<RevCommit> allCommits = getAllCommits(branch);
 		for (RevCommit commit:allCommits){
 			
 			//previous create/update will put source repo's commit hash as binary repo's commit message.

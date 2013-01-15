@@ -41,9 +41,9 @@ public abstract class ZeusRepositoryProcessor {
 		boolean isBranchExisted = binRepo.isBranchExisted(branchName);
 		if (isBranchExisted && branchName.toLowerCase().equals(Constants.MASTER_BRANCH)){
 			binRepo.checkoutBranch(branchName);
-			boolean firstCommit = binRepo.getHeadCommit().getFullMessage().equals(Constants.FIRST_COMMIT_MESSAGE);
-			boolean blacklistCommit = binRepo.getHeadCommit().getFullMessage().equals(Constants.BLACKLIST_COMMIT_MESSAGE);
-			int commitSize = binRepo.getAllCommits().size();
+			boolean firstCommit = binRepo.getHeadCommit(branchName).getFullMessage().equals(Constants.FIRST_COMMIT_MESSAGE);
+			boolean blacklistCommit = binRepo.getHeadCommit(branchName).getFullMessage().equals(Constants.BLACKLIST_COMMIT_MESSAGE);
+			int commitSize = binRepo.getAllCommits(branchName).size();
 			if ((firstCommit || blacklistCommit) && commitSize <= 2 ){
 				return true;
 			}
@@ -68,6 +68,18 @@ public abstract class ZeusRepositoryProcessor {
 		return false;
 	}
 	
+	protected boolean isNewBinaryBranch(String branchName) throws GitException{
+		branchName = GitUtils.getShortBranchName(branchName);
+		
+		// check whether the branch exists
+		boolean isBranchExisted = binRepo.isBranchExisted(branchName);
+		if (isBranchExisted && branchName.toLowerCase().equals(Constants.MASTER_BRANCH)){
+			return binRepo.getHeadCommit(branchName).getFullMessage().equals(Constants.FIRST_COMMIT_MESSAGE);
+		}
+		
+		return !isBranchExisted;
+	}
+	
 	private String getCurrentBranch(ZeusRepository repo) throws GitException{
 		try {
 			return repo.getBranch();
@@ -76,14 +88,14 @@ public abstract class ZeusRepositoryProcessor {
 		}
 	}
 
-	public String getBinaryStartCommitHash(String fromBranchName,
+	public String getBinaryStartCommitHash(String branch,
 			String startCommitHash) throws GitException {
 		
 		if (startCommitHash == null){
 			return null;
 		}
 		
-		return binRepo.getBinaryCommit(startCommitHash);
+		return binRepo.getBinaryCommit(branch, startCommitHash);
 	}
 	
 	abstract public void process() throws Exception;

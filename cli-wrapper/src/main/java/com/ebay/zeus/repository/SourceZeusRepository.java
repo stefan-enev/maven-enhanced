@@ -34,11 +34,12 @@ public class SourceZeusRepository extends ZeusRepository {
 	 * @param sinceCommitHash
 	 * @throws GitException 
 	 */
-	public List<RevCommit> getNewCommits(RevCommit sinceCommit) throws GitException{
-		List<RevCommit> allCommits = getAllCommits();
+	public List<RevCommit> getNewCommits(String branch, RevCommit sinceCommit) throws GitException{
+		List<RevCommit> allCommits = getAllCommits(branch);
 		
 		if (sinceCommit==null || "".equals(sinceCommit.getName())){
-			throw new GitException("'since' commit hash can't be empty.");
+			logger.warn("'since' commit hash can't be empty.");
+			return Collections.emptyList();
 		}
 
 		//if binary repo is bare, then return all commits.

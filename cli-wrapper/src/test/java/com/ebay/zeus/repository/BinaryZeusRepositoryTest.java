@@ -71,7 +71,7 @@ public class BinaryZeusRepositoryTest extends BaseZeusRepositoryTestCase {
 		
 		//checkoutBranch
 		repo.checkoutBranch("origin/branch2");
-		List<RevCommit> commits = repo.getAllCommits();
+		List<RevCommit> commits = repo.getAllCommits("branch2");
 		
 //		RevCommit testCommit = null;
 //		for (RevCommit commit:commits){
@@ -85,7 +85,7 @@ public class BinaryZeusRepositoryTest extends BaseZeusRepositoryTestCase {
 		
 		//checkoutRemoteBranch
 		repo.checkoutRemoteBranch("branch1");
-		commits = repo.getAllCommits();
+		commits = repo.getAllCommits("branch1");
 		assertEquals(3, commits.size());
 		
 		//commitNDPushAll

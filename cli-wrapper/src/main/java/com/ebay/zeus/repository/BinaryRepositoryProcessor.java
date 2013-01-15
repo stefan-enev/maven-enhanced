@@ -42,11 +42,7 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 		
 		notNeedProcessedCommits.clear();
 
-		List<String> activeBranches = ZeusUtil.getActiveBranches(srcRepo.getRemoteUrl(), binRepoRoot);
-		
-		if (isBlackListChanged()){
-			binRepo.commitNDPushAll("commit blacklist");
-		}
+		List<String> activeBranches = ZeusUtil.getActiveBranches(srcRepo, binRepoRoot);
 		
 		if (activeBranches.size() == 0){
 			logger.warn("haven't found any active branches, do nothing.");
@@ -99,13 +95,9 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 		logger.info("updating binary repository's branch:"+branchName);
 		
 		try {
-			srcRepo.checkoutBranch(branchName);
-			srcRepo.clean();
-			
-			boolean newBinBranch = checkoutBinaryBranch(branchName);
-			
-			if (newBinBranch){
-				RevCommit headCommit = srcRepo.getHeadCommit();
+			if (isNewBinaryBranch(branchName)){
+				checkoutBinaryBranch(branchName);
+				RevCommit headCommit = srcRepo.getHeadCommit(branchName);
 				if (needProcess(headCommit)){
 	        		processNewBranchCommit(headCommit);
 	        	}else{
@@ -115,26 +107,28 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 				return;
 			}
 			
-	        RevCommit headCommit = binRepo.getHeadCommit();
-	        
-	        List<RevCommit> newCommits = srcRepo.getNewCommits(headCommit);
-	        
+	        RevCommit headCommit = binRepo.getHeadCommit(branchName);
+	        List<RevCommit> newCommits = srcRepo.getNewCommits(branchName, headCommit);
 	        if (newCommits.size()==0){
 				logger.debug("There isn't any new commits in source repository by binary repository's 'since' commit:"
 						+ headCommit.getName());
+	        }else{
+	        	srcRepo.checkoutBranch(branchName);
+	        	checkoutBinaryBranch(branchName);
+		        
+		        for (RevCommit commit:newCommits){
+		        	if (needProcess(commit)){
+		        		processCommit(branchName, commit);
+		        	}else{
+		        		logger.debug("needn't handle this commit:"+commit.getName()+"--"+commit.getFullMessage());
+		        	}
+		        }
+		        
+		        //rollback to "master"
+	        	srcRepo.checkoutBranch(Constants.MASTER_BRANCH);
+	        	binRepo.checkoutBranch(Constants.MASTER_BRANCH);
 	        }
-	        
-	        for (RevCommit commit:newCommits){
-	        	if (needProcess(commit)){
-	        		processCommit(commit);
-	        	}else{
-	        		logger.debug("needn't handle this commit:"+commit.getName()+"--"+commit.getFullMessage());
-	        	}
-	        }
-	        
-	        //rollback to "master"
-        	srcRepo.checkoutBranch(Constants.MASTER_BRANCH);
-        	binRepo.checkoutBranch(Constants.MASTER_BRANCH);
+	       
 		} catch (Exception e) {
 			//shouldn't break others branch.
 			logger.error(e.getMessage(), e);
@@ -154,7 +148,7 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 		logger.info("creating binary repository with commit:"+commit.getFullMessage());
 		
 		try {
-			srcRepo.reset(commit.getName());
+			srcRepo.checkout(commit.getName());
 
 			if (compile()) {
 				copyTargetFolderFromSrcRepoToBinRepo();
@@ -170,11 +164,6 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 			// shouldn't break others commits
 			logger.error(e.getMessage(), e);
 			notNeedProcessedCommits.add(commit.getName());
-		} finally {
-			// rollback
-			srcRepo.reset();
-			srcRepo.pull();
-			binRepo.reset();
 		}
 
 		logger.info("created binary repository with commit:" + commit.getFullMessage());
@@ -186,15 +175,14 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 	 * @param commit
 	 * @throws GitException
 	 */
-	private void processCommit(RevCommit commit) throws GitException {
+	private void processCommit(String branch, RevCommit commit) throws GitException {
 		logger.info("updating binary repository with commit:"+commit.getFullMessage());
 		
-    	if (!binRepo.hasCommit(commit.getName())){
+    	if (!binRepo.hasCommit(branch, commit.getName())){
         	try {
-        		srcRepo.reset(commit.getName());
+        		srcRepo.checkout(commit.getName());
         		
         		if (compile()){
-        			
         			copyTargetFolderFromSrcRepoToBinRepo();
     				
     				List<String> binChangedFiles = binRepo.getChangedFiles();
@@ -215,11 +203,6 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 				//shouldn't break others commits
 				logger.error(e.getMessage(), e);
 				notNeedProcessedCommits.add(commit.getName());
-			}finally{
-				//rollback
-	        	srcRepo.reset();
-	        	srcRepo.pull();
-	        	binRepo.reset();
 			}
         }
     	

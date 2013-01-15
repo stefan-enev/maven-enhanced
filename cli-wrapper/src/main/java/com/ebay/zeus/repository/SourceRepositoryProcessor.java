@@ -49,7 +49,7 @@ public class SourceRepositoryProcessor extends ZeusRepositoryProcessor{
 			binRepo = new BinaryZeusRepository(binGit);
 			binRepo.pull();
 		}else{
-			RevCommit headCommit = srcRepo.getHeadCommit();
+			RevCommit headCommit = srcRepo.getHeadCommit(srcRepo.getBranch());
 			String binRepoRemoteUrl = ZeusUtil.getBinaryRemoteUrl(true, srcRepo);
 			boolean existed = ZeusUtil.isExistedBranchCommit(binRepoRemoteUrl,
 					srcRepo.getBranch(), headCommit.getName());
@@ -68,7 +68,7 @@ public class SourceRepositoryProcessor extends ZeusRepositoryProcessor{
 		}
 		
 		//reset binary repo's commit
-		RevCommit headCommit = srcRepo.getHeadCommit();
+		RevCommit headCommit = srcRepo.getHeadCommit(srcRepo.getBranch());
 		String binaryCommitHash = this.getBinaryStartCommitHash(
 				srcRepo.getBranch(), headCommit.getName());
 		

@@ -131,12 +131,12 @@ public class BinaryZeusRepository extends ZeusRepository{
 	 * @return binary repo's commit hash
 	 * @throws GitException 
 	 */
-	public String getBinaryCommit(String sourceRepoCommitHash) throws GitException{
+	public String getBinaryCommit(String branch, String sourceRepoCommitHash) throws GitException{
 		if (sourceRepoCommitHash == null){
 			return null;
 		}
 		
-		List<RevCommit> commits = this.getAllCommits();
+		List<RevCommit> commits = this.getAllCommits(branch);
 		for (RevCommit commit:commits){
 			String message = commit.getFullMessage();
 			if (sourceRepoCommitHash.equals(message)){
