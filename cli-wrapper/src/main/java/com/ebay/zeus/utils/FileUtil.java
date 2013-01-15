@@ -160,7 +160,15 @@ public class FileUtil {
 
 		FilenameFilter filter = new FilenameFilter() {
 			public boolean accept(File dir, String name) {
-				return true;
+				File file = new File(dir, name);
+				if (file.isDirectory()){
+					return true;
+				}
+				
+				if (name.endsWith(".class")){
+					return true;
+				}
+				return false;
 			}
 		};
 

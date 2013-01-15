@@ -555,6 +555,7 @@ public class ZeusRepository extends FileRepository{
 			changedFiles.addAll(status.getModified());
 			changedFiles.addAll(status.getUntracked());
 			changedFiles.addAll(status.getRemoved());
+			changedFiles.addAll(status.getMissing());
 			
 			return changedFiles; 
 		} catch (Exception e) {
