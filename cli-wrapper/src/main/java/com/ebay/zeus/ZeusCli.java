@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import com.ebay.zeus.cli.CliArgsParser;
 import com.ebay.zeus.cli.InputParams;
 import com.ebay.zeus.cli.RunMode;
+import com.ebay.zeus.utils.MavenUtil;
 import com.ebay.zeus.utils.TimeTracker;
 import com.ebay.zeus.utils.ZeusUtil;
 
@@ -51,7 +52,7 @@ public class ZeusCli {
 
 	public static final Logger logger = LoggerFactory.getLogger(ZeusCli.class);
 	
-	public static void main( String[] args ) throws ParseException{
+	public static void main( String[] args ) throws Exception{
 		TimeTracker tracker = new TimeTracker();
 		tracker.start();
 		
@@ -83,12 +84,17 @@ public class ZeusCli {
 		return input;
 	}
 	
-	public void process( InputParams input ){
+	public void process( InputParams input ) throws Exception{
 		File root = new File(System.getProperty("user.dir"));
 		
 		String inputRepoRoot = input.getSourceRepoRoot();
 		if (inputRepoRoot!=null && ZeusUtil.isLocalRepoExisted(new File(inputRepoRoot))){
 			root = new File(inputRepoRoot);
+		}
+		
+		if (!MavenUtil.isMavenAvalible()){
+			logger.error("Haven't found maven runtime, exiting Zeus.");
+			throw new Exception("Haven't found maven runtime, exiting Zeus.");
 		}
 		
 		logger.info("Running Zeus in source repository root:" + root.getAbsolutePath());
@@ -107,7 +113,7 @@ public class ZeusCli {
 			
 		} catch (Exception e) {
 			logger.error(e.getMessage(), e);
-			return;
+			throw e;
 		}
 	}
 	

@@ -42,6 +42,18 @@ public class MavenUtil {
             
             return command;
     }
+    
+    public static boolean isMavenAvalible(){
+    	String m2home = System.getenv("M2_HOME");
+        if (m2home != null && !m2home.trim().equals("")) {
+                File maven_home = new File(m2home);
+                if (maven_home.exists()){
+                	return true;
+                }
+        }
+        
+        return false;
+    }
 
     
     /**
