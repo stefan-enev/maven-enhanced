@@ -52,6 +52,24 @@ public class MavenUtil {
                 }
         }
         
+        String path = System.getenv("path");
+        String[] paths = path.split(";");
+        
+        String mavenPath = null;
+        for (String subPath:paths){
+        	if (subPath.contains("apache-maven")){
+        		mavenPath = subPath;
+        		break;
+            }
+        }
+        
+        if (mavenPath!=null){
+        	if (new File(mavenPath).exists()){
+        		return true;
+        	}
+        }
+        
+        
         return false;
     }
 
