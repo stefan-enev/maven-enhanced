@@ -68,6 +68,14 @@ public class ZeusManager {
 		
 		// assume the current directory the "root" of the project
 		try {
+			
+			if (sourceRepository.getBranch().equals(sourceRepository.getFullBranch())){
+				//current branch is detached.
+				sourceRepository.checkoutBranch(Constants.MASTER_BRANCH);
+			}
+			
+			sourceRepository.pull();
+			
 			long starttime = 0l;
 			long endtime = 0l;
 
@@ -163,7 +171,6 @@ public class ZeusManager {
 	private void gitpull() throws GitException{
 		logger.info("Pulling source repository & binary repository...");
 		
-		sourceRepository.pull();
 		binaryRepository.pull();
 		
 		logger.info("Pulled source repository & binary repository.");
