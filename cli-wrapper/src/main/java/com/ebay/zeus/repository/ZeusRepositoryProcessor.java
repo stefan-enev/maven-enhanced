@@ -39,12 +39,10 @@ public abstract class ZeusRepositoryProcessor {
 		
 		// check whether the branch exists
 		boolean isBranchExisted = binRepo.isBranchExisted(branchName);
-		if (isBranchExisted && branchName.toLowerCase().equals(Constants.MASTER_BRANCH)){
+		if (isBranchExisted){
 			binRepo.checkoutBranch(branchName);
 			boolean firstCommit = binRepo.getHeadCommit(branchName).getFullMessage().equals(Constants.FIRST_COMMIT_MESSAGE);
-			boolean blacklistCommit = binRepo.getHeadCommit(branchName).getFullMessage().equals(Constants.BLACKLIST_COMMIT_MESSAGE);
-			int commitSize = binRepo.getAllCommits(branchName).size();
-			if ((firstCommit || blacklistCommit) && commitSize <= 2 ){
+			if (firstCommit ){
 				return true;
 			}
 		}
@@ -73,7 +71,7 @@ public abstract class ZeusRepositoryProcessor {
 		
 		// check whether the branch exists
 		boolean isBranchExisted = binRepo.isBranchExisted(branchName);
-		if (isBranchExisted && branchName.toLowerCase().equals(Constants.MASTER_BRANCH)){
+		if (isBranchExisted){
 			return binRepo.getHeadCommit(branchName).getFullMessage().equals(Constants.FIRST_COMMIT_MESSAGE);
 		}
 		
