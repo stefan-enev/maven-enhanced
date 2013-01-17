@@ -57,7 +57,7 @@ public class MavenUtil {
         
         String mavenPath = null;
         for (String subPath:paths){
-        	if (subPath.contains("apache-maven")){
+        	if (subPath.contains("maven")){
         		mavenPath = subPath;
         		break;
             }

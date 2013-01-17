@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Calendar;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +31,7 @@ public class ZeusManager {
     private BinaryZeusRepository binaryRepository;
     private File srcRepoRoot;
     private boolean isLocalBinaryRepoExisted = false;
+    private boolean isRemoteBinaryRepoExisted = false;
     
 	public ZeusManager(File root) throws GitException {
 		if (root.canRead() && root.isDirectory()){
@@ -45,14 +47,22 @@ public class ZeusManager {
 		try {
 			logger.info("initializing basic information...");
 			
+			
 			this.sourceRepository = new SourceZeusRepository(new File(root, Constants.DOT_GIT));
 			File sourceRepoRoot = sourceRepository.getDirectory().getParentFile();
 
-			if (ZeusUtil.isLocalBinaryRepositoryExisted(sourceRepoRoot)) {
-				File binaryRepoRoot = ZeusUtil.getExistedBinaryRepositoryRoot(sourceRepoRoot);
+			isRemoteBinaryRepoExisted = ZeusUtil.isRemoteBinaryRepositoryExisted(sourceRepository.getRemoteUrl());
+			
+			File binaryRepoRoot = ZeusUtil.getExistedBinaryRepositoryRoot(sourceRepoRoot);
+			
+			isLocalBinaryRepoExisted = ZeusUtil.isLocalBinaryRepositoryExisted(sourceRepoRoot);
+			if (isRemoteBinaryRepoExisted && isLocalBinaryRepoExisted) {
 				this.binaryRepository = new BinaryZeusRepository(new File(binaryRepoRoot, Constants.DOT_GIT));
-
-				isLocalBinaryRepoExisted = true;
+			}
+			
+			if (!isRemoteBinaryRepoExisted && isLocalBinaryRepoExisted){
+				logger.info("remote binary repository not existed, but local repository exists, delete it.");
+				FileUtils.deleteDirectory(binaryRepoRoot);
 			}
 			
 			srcRepoRoot = sourceRepository.getDirectory().getParentFile();
@@ -79,7 +89,7 @@ public class ZeusManager {
 			long starttime = 0l;
 			long endtime = 0l;
 
-			if (isLocalBinaryRepoExisted) {
+			if (isRemoteBinaryRepoExisted && isLocalBinaryRepoExisted) {
 				logger.info("local binary repository existed, update it with source repo's classes.");
 				
 				// if previous run started in less then 1 minute before,
