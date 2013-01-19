@@ -43,6 +43,14 @@ public class SourceRepositoryProcessor extends ZeusRepositoryProcessor{
 			throw new GitException("Remote binary repository not available("+srcRepo.getRemoteUrl()+"). exiting...");
 		}
 		
+		if (ZeusUtil.targetClassesExisted(srcRepoRoot)){
+			throw new GitException("Have existed classes, needn't Zeus. Existing...");
+		}
+		
+		if (ZeusUtil.haveLocalChangedJavaFiles(srcRepo)){
+			throw new GitException("Have local changed java files, needn't Zeus. Existing...");
+		}
+		
 		if (ZeusUtil.isLocalBinaryRepositoryExisted(srcRepoRoot)) {
 			File binaryRepoRoot= ZeusUtil.getExistedBinaryRepositoryRoot(srcRepoRoot);
 			File binGit = new File(binaryRepoRoot, Constants.DOT_GIT);		

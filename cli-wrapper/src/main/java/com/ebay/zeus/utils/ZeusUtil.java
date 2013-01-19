@@ -1,6 +1,7 @@
 package com.ebay.zeus.utils;
 
 import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -361,6 +362,38 @@ public class ZeusUtil {
 		return result;
 	}
     
+    /**
+     * check whether maven projects' target folders existed.
+     * Suppose all sub folders of root are maven project roots.
+     * 
+     * @param root
+     * @return
+     */
+	public static boolean targetClassesExisted(File root) {
+		FilenameFilter filter = new FilenameFilter() {
+
+			public boolean accept(File dir, String name) {
+				return new File(dir, name).isDirectory();
+			}
+
+		};
+		String[] directories = root.list(filter);
+
+		for (String dir : directories) {
+			File dirFile = new File(root, dir);
+			File pomFile = new File(dirFile, "pom.xml");
+
+			if (pomFile.exists()) {
+				File target = new File(dirFile, "target");
+				if (target.exists() && target.isDirectory()) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+    
     public static String calculateBinaryRepositoryName(String org , String repoName ){
     	return org + "_" + repoName + "_" + Constants.ORGNAME_BINARY_LOWERCASE;
     }
@@ -385,6 +418,23 @@ public class ZeusUtil {
     	}
     	return remoteUrl;
     }
+
+    /**
+     * check whether have changed java files in specified git repo.
+     * 
+     * @param srcRepo
+     * @return
+     * @throws GitException
+     */
+	public static boolean haveLocalChangedJavaFiles(SourceZeusRepository srcRepo) throws GitException {
+		List<String> changedFiles = srcRepo.getChangedFiles();
+		for (String file:changedFiles){
+			if (file.endsWith(".java")){
+				return true;
+			}
+		}
+		return false;
+	}
     
 //    /**
 //     * check whether binary repo's changed files contains source repo's changed files.
