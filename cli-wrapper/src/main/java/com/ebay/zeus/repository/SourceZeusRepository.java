@@ -16,11 +16,6 @@ public class SourceZeusRepository extends ZeusRepository {
 		super(gitDir);
 	}
 
-	//TODO
-	public void processNewCommits(){
-		
-	}
-	
 	/**
 	 * get new commits for current branch according to 'since' commit hash.
 	 * 1. find all commits for current branch.
@@ -35,7 +30,7 @@ public class SourceZeusRepository extends ZeusRepository {
 	 * @throws GitException 
 	 */
 	public List<RevCommit> getNewCommits(String branch, RevCommit sinceCommit) throws GitException{
-		List<RevCommit> allCommits = getAllCommits(branch);
+		List<RevCommit> allCommits = getAllCommits(branch, true);
 		
 		if (sinceCommit==null || "".equals(sinceCommit.getName())){
 			logger.warn("'since' commit hash can't be empty.");

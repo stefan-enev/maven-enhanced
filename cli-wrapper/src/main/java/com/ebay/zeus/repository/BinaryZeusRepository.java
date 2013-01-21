@@ -136,7 +136,7 @@ public class BinaryZeusRepository extends ZeusRepository{
 			return null;
 		}
 		
-		List<RevCommit> commits = this.getAllCommits(branch);
+		List<RevCommit> commits = this.getAllCommits(branch, false);
 		for (RevCommit commit:commits){
 			String message = commit.getFullMessage();
 			if (sourceRepoCommitHash.equals(message)){

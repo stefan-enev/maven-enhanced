@@ -2,7 +2,9 @@ package com.ebay.zeus.repository;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
+import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.revwalk.RevCommit;
 
 import com.ebay.zeus.exceptions.GitException;
@@ -35,10 +37,6 @@ public class SourceRepositoryProcessor extends ZeusRepositoryProcessor{
 		
 		// TODO: download dependencies
 		
-		// read the source project
-        // TODO: RGIROTI Remove next line at some point - refactor this to a test case somewhere
-        // root = new File("D:\\dev\\devex\\binrepo-devex");
-		
 		if (!ZeusUtil.isRemoteBinaryRepositoryExisted(srcRepo.getRemoteUrl())) {
 			throw new GitException("Remote binary repository not available("+srcRepo.getRemoteUrl()+"). exiting...");
 		}
@@ -51,16 +49,17 @@ public class SourceRepositoryProcessor extends ZeusRepositoryProcessor{
 			throw new GitException("Have local changed java files, needn't Zeus. Existing...");
 		}
 		
+		RevCommit targetCommit = getJavaTargetCommit(srcRepo);
+		
 		if (ZeusUtil.isLocalBinaryRepositoryExisted(srcRepoRoot)) {
 			File binaryRepoRoot= ZeusUtil.getExistedBinaryRepositoryRoot(srcRepoRoot);
 			File binGit = new File(binaryRepoRoot, Constants.DOT_GIT);		
 			binRepo = new BinaryZeusRepository(binGit);
 			binRepo.pull();
 		}else{
-			RevCommit headCommit = srcRepo.getHeadCommit(srcRepo.getBranch());
 			String binRepoRemoteUrl = ZeusUtil.getBinaryRemoteUrl(true, srcRepo);
 			boolean existed = ZeusUtil.isExistedBranchCommit(binRepoRemoteUrl,
-					srcRepo.getBranch(), headCommit.getName());
+					srcRepo.getBranch(), targetCommit.getName());
 			
 			if (!existed){
 				return;
@@ -76,13 +75,12 @@ public class SourceRepositoryProcessor extends ZeusRepositoryProcessor{
 		}
 		
 		//reset binary repo's commit
-		RevCommit headCommit = srcRepo.getHeadCommit(srcRepo.getBranch());
 		String binaryCommitHash = this.getBinaryStartCommitHash(
-				srcRepo.getBranch(), headCommit.getName());
+				srcRepo.getBranch(), targetCommit.getName());
 		
 		if (binaryCommitHash == null){
 			binRepo.checkoutBranch(Constants.MASTER_BRANCH);
-			throw new GitException("binary repository hasn't specified commit:"+headCommit.getName()+". Exiting Zeus...");
+			throw new GitException("binary repository hasn't specified commit:"+targetCommit.getName()+". Exiting Zeus...");
 		}
 		
 		binRepo.reset(binaryCommitHash);
@@ -94,6 +92,28 @@ public class SourceRepositoryProcessor extends ZeusRepositoryProcessor{
 		logger.info("setup is completed, takes " + tracker.getDurationString());
 	}
 	
+	/**
+	 * it will loop srcRepo's commits (From HEAD to previous)
+	 * to find latest commit that contains java files changes.
+	 * 
+	 * @param srcRepo
+	 * @return
+	 * @throws Exception
+	 */
+	private RevCommit getJavaTargetCommit(SourceZeusRepository srcRepo) throws Exception {
+		List<RevCommit> commits = srcRepo.getAllCommits(srcRepo.getBranch(), false);
+		for (RevCommit commit:commits){
+			List<DiffEntry> entries = srcRepo.getChangedFiles(commit);
+			for (DiffEntry entry:entries){
+				if (entry.getNewPath().endsWith(".java")){
+					return commit;
+				}
+			}
+		}
+		
+		return commits.get(0);
+	}
+
 	private void copyClassesFromBinaryRepoToSourceRepo() throws GitException{
 		try {
 			FileUtil.copyBinaryFolders(binRepo.getDirectory()

@@ -112,10 +112,9 @@ public class ZeusCli {
 			}
 			
 		} catch (Exception e) {
-			logger.error(e.getMessage(), e);
+			logger.error(e.getMessage());
 			throw e;
 		}
 	}
-	
 
 }

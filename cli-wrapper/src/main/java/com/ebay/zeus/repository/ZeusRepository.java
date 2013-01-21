@@ -428,7 +428,7 @@ public class ZeusRepository extends FileRepository{
 	 * @return commit list
 	 * @throws GitException
 	 */
-	public List<RevCommit> getAllCommits(String branch) throws GitException{
+	public List<RevCommit> getAllCommits(String branch, boolean reverse) throws GitException{
 		LogCommand logCmd = git.log();
 		
     	try {
@@ -443,7 +443,9 @@ public class ZeusRepository extends FileRepository{
     			commitList.add(iterator.next());
     		}
     		
-    		Collections.reverse(commitList);
+    		if (reverse){
+    			Collections.reverse(commitList);
+    		}
     		
     		return commitList;
 		} catch (Exception e) {
@@ -525,7 +527,7 @@ public class ZeusRepository extends FileRepository{
 			throw new GitException("commit SHA shouldn't be empty.");
 		}
 		
-		List<RevCommit> allCommits = getAllCommits(branch);
+		List<RevCommit> allCommits = getAllCommits(branch, false);
 		for (RevCommit commit:allCommits){
 			
 			//previous create/update will put source repo's commit hash as binary repo's commit message.
