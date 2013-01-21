@@ -51,8 +51,6 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 		
 		//TODO: if binary branch isn't in active branch list, should retire it.
 		
-		//TODO: for candidate branches, if one branch is new, only process its HEAD commit.
-		//      won't care branch's relations
 		for (String branch:activeBranches){
 			processBranch(branch);
 		}
@@ -61,17 +59,6 @@ public class BinaryRepositoryProcessor extends ZeusRepositoryProcessor{
 		logger.debug("commit/pushed changes onto remote binary repo:"
 				+ binRepo.getRemoteUrl());
 		logger.info("Binary repository updated.");
-	}
-
-	public boolean isBlackListChanged() throws GitException {
-		List<String> changedFiles = binRepo.getChangedFiles();
-		for (String file:changedFiles){
-			if (file.contains(".blacklist")){
-				return true;
-			}
-		}
-		
-		return false;
 	}
 
 	/**

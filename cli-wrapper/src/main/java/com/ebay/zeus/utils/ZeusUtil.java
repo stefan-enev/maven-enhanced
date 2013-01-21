@@ -1,12 +1,15 @@
 package com.ebay.zeus.utils;
 
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.FileFilterUtils;
+import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.kohsuke.github.GHBranch;
@@ -370,24 +373,13 @@ public class ZeusUtil {
      * @return
      */
 	public static boolean targetClassesExisted(File root) {
-		FilenameFilter filter = new FilenameFilter() {
-
-			public boolean accept(File dir, String name) {
-				return new File(dir, name).isDirectory();
-			}
-
-		};
-		String[] directories = root.list(filter);
-
-		for (String dir : directories) {
-			File dirFile = new File(root, dir);
-			File pomFile = new File(dirFile, "pom.xml");
-
-			if (pomFile.exists()) {
-				File target = new File(dirFile, "target");
-				if (target.exists() && target.isDirectory()) {
-					return true;
-				}
+		
+		Collection<File> pomFiles = FileUtils.listFiles(root, FileFilterUtils.nameFileFilter("pom.xml"), TrueFileFilter.INSTANCE);
+		for (File pom:pomFiles){
+			File projectRoot = pom.getParentFile();
+			File targetFolder = new File(projectRoot, "target");
+			if (targetFolder.exists() && targetFolder.isDirectory()){
+				return true;
 			}
 		}
 
