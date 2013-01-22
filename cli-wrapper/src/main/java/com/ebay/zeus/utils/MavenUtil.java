@@ -43,6 +43,8 @@ public class MavenUtil {
             return command;
     }
     
+    private static String OS = System.getProperty("os.name").toLowerCase();
+    
     public static boolean isMavenAvalible(){
     	String m2home = System.getenv("M2_HOME");
         if (m2home != null && !m2home.trim().equals("")) {
@@ -52,8 +54,15 @@ public class MavenUtil {
                 }
         }
         
-        String path = System.getenv("path");
-        String[] paths = path.split(";");
+        String path = System.getenv("PATH");
+        
+        String[] paths = null;
+        
+        if (isWindows()){
+        	paths = path.split(";");
+        }else{
+        	paths = path.split(":");
+        }
         
         String mavenPath = null;
         for (String subPath:paths){
@@ -73,6 +82,9 @@ public class MavenUtil {
         return false;
     }
 
+	public static boolean isWindows() {
+		return (OS.indexOf("win") >= 0);
+	}
     
     /**
      * 
